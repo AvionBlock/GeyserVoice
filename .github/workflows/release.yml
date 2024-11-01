@@ -5,10 +5,10 @@ on:
     inputs:
       tag:
         required: true
-        description: 'Tag'
+        description: "Tag"
       status:
         required: true
-        description: 'Status (beta, stable)'
+        description: "Status (beta, stable)"
 
 env:
   VERSION: ${{ github.event.inputs.tag }}-${{ github.event.inputs.status }}
@@ -18,26 +18,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-    - name: Set up JDK
-      uses: actions/setup-java@v2
-      with:
-        distribution: 'adopt'
-        java-version: '17'
+      - name: Set up JDK
+        uses: actions/setup-java@v2
+        with:
+          distribution: "adopt"
+          java-version: "17"
 
-    - name: Make gradlew executable
-      run: chmod +x gradlew
-      
-    - name: Build with Gradle
-      run: ./gradlew build -PVERSION="${{ env.VERSION }}" 
+      - name: Make gradlew executable
+        run: chmod +x gradlew
 
-    - name: Archive artifacts
-      uses: actions/upload-artifact@v2
-      with:
-        name: geyser-voice-artifact
-        path: build/libs/
+      - name: Build with Gradle
+        run: ./gradlew build -PVERSION="${{ env.VERSION }}"
+
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: geyser-voice-artifact
+          path: build/libs/
 
   publish_release:
     name: Publish release
@@ -46,13 +46,13 @@ jobs:
 
     permissions:
       contents: write
-      
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
 
       - name: Download artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: geyser-voice-artifact
           path: build/libs/

@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id 'io.github.goooler.shadow' version '8.1.8'
     id 'net.kyori.blossom' version '2.1.0'
 }
 
@@ -33,14 +33,15 @@ repositories {
 }
 
 dependencies {
-    compileOnly('io.papermc.paper:paper-api:1.20.2-R0.1-SNAPSHOT')
-    compileOnly('com.velocitypowered:velocity-api:3.3.0-SNAPSHOT')
-    annotationProcessor('com.velocitypowered:velocity-api:3.3.0-SNAPSHOT')
-    compileOnly('net.md-5:bungeecord-api:1.20-R0.2')
+    compileOnly 'dev.folia:folia-api:1.20.2-R0.1-SNAPSHOT'
+    compileOnly 'io.papermc.paper:paper-api:1.20.2-R0.1-SNAPSHOT'
+    compileOnly 'com.velocitypowered:velocity-api:3.3.0-SNAPSHOT'
+    annotationProcessor 'com.velocitypowered:velocity-api:3.3.0-SNAPSHOT'
+    compileOnly 'net.md-5:bungeecord-api:1.20-R0.2'
     
-    compileOnly('me.clip:placeholderapi:2.11.5')
-    compileOnly('org.projectlombok:lombok:1.18.30')
-    annotationProcessor('org.projectlombok:lombok:1.18.30')
+    compileOnly 'me.clip:placeholderapi:2.11.6'
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
     
     implementation('com.fasterxml.jackson.core:jackson-databind:2.15.2')
     implementation('com.fasterxml.jackson.core:jackson-core:2.15.2')
@@ -54,25 +55,57 @@ sourceSets {
                 property("name", "GeyserVoice")
                 property("version", version.toString())
                 property("description", description)
-                property("url", "https://mineserv.top")
+                property("url", "https://uninode.de")
             }
             resources {
                 property("name", "GeyserVoice")
                 property("version", version.toString())
                 property("description", description)
-                property("url", "https://mineserv.top")
+                property("url", "https://uninode.de")
             }
         }
     }
 }
 
-task deleteUnusableJar(type: Delete) {
-    delete "build/libs/GeyserVoice-"+version+".jar"
-}
-build.finalizedBy deleteUnusableJar
-build.finalizedBy shadowJar
-
 tasks.withType(JavaCompile) {
-    options.release = 17
+    options.encoding = 'UTF-8'
 }
 
+tasks.withType(Javadoc) {
+    options.encoding = 'UTF-8'
+    options.charSet = 'UTF-8'
+}
+
+tasks.withType(Test) {
+    systemProperty 'file.encoding', 'UTF-8'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+shadowJar {
+    archiveClassifier.set('all')
+    relocate 'com.tcoded.folialib', 'io.greitan.avion.folialib' 
+}
+
+task deleteUnusableJar(type: Delete) {
+    doLast {
+        file("build/libs").listFiles().each { File file ->
+            if (file.name.endsWith(".jar") && !file.name.contains("-all")) {
+                file.delete()
+            }
+        }
+    }
+}
+
+task copyToTestServer(type: Copy) {
+    from shadowJar
+    into "D:\\JavaTest\\plugins"
+}
+copyToTestServer.dependsOn shadowJar
+
+build.finalizedBy shadowJar
+shadowJar.finalizedBy deleteUnusableJar
+if (project.hasProperty('DEV')) shadowJar.finalizedBy copyToTestServer

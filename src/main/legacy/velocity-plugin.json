@@ -1,14 +1,12 @@
 {
-    "id": "geyservoice",
-    "name": "${project.artifactId}",
-    "version": "${project.version}",
-    "description": "Plugin created to send titles, actionbars and bossbars to the player and the proxy using the MiniMessage format.",
-    "authors": [
-      "4drian3d"
-    ],
-    "dependencies": [
-      {"id":"protocolize","optional":true},
-      {"id":"protocolizelegacysupport","optional":true}
-    ],
-    "main": "io.greitan.mineserv.velocity.GeyserVoice"
+  "id": "geyservoice",
+  "name": "${project.artifactId}",
+  "version": "${project.version}",
+  "description": "Plugin created to send titles, actionbars and bossbars to the player and the proxy using the MiniMessage format.",
+  "authors": ["4drian3d"],
+  "dependencies": [
+    { "id": "protocolize", "optional": true },
+    { "id": "protocolizelegacysupport", "optional": true }
+  ],
+  "main": "io.greitan.avion.velocity.GeyserVoice"
 }

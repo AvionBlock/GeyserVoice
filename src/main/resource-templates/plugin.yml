@@ -1,26 +1,25 @@
-name: {{ name }}
+name: { { name } }
 
-version: {{ version }}
+version: { { version } }
 
-main: io.greitan.mineserv.paper.GeyserVoice
-description: {{ description }}
+main: io.greitan.avion.paper.GeyserVoice
+description: { { description } }
 
 author: Alpha
-website: {{ url }}
+website: { { url } }
 
-api-version: '1.20'
-prefix: {{ name }}
-
+api-version: "1.20"
+prefix: { { name } }
 
 soft-depend:
-- PlaceholderAPI
+  - PlaceholderAPI
 
 commands:
   voice:
     description: Voice chat main command.
     usage: /voice <bind|setup|connect|reload>
     permission: voice.cmd
-    
+
 permissions:
   voice.cmd:
     default: true

@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        required: true
+        description: 'Tag'
+      status:
+        required: true
+        description: 'Status (beta, stable)'
+
+env:
+  VERSION: ${{ github.event.inputs.tag }}-${{ github.event.inputs.status }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up JDK
+      uses: actions/setup-java@v2
+      with:
+        distribution: 'adopt'
+        java-version: '17'
+
+    - name: Make gradlew executable
+      run: chmod +x gradlew
+      
+    - name: Build with Gradle
+      run: ./gradlew build -PVERSION="${{ env.VERSION }}" 
+
+    - name: Archive artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: geyser-voice-artifact
+        path: build/libs/
+
+  publish_release:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: geyser-voice-artifact
+          path: build/libs/
+
+      - name: Create release
+        if: github.event.inputs.status == 'stable'
+        uses: ncipollo/release-action@v1.13.0
+        with:
+          prerelease: false
+          tag: ${{ github.event.inputs.tag }}
+          artifacts: |
+            build/libs/GeyserVoice-*.jar
+        env:
+          GITHUB_REPOSITORY: mineserv-top/GeyserVoice
+
+      - name: Create pre-release
+        if: github.event.inputs.status != 'stable'
+        uses: ncipollo/release-action@v1.13.0
+        with:
+          prerelease: true
+          tag: ${{ github.event.inputs.tag }}
+          artifacts: |
+            build/libs/GeyserVoice-*.jar
+        env:
+          GITHUB_REPOSITORY: mineserv-top/GeyserVoice

@@ -1,0 +1,42 @@
+# nl
+messages:
+  cmd-reload: "Plugin herladen!"  # Message indicating successful plugin reload.
+
+  cmd-bind-connect: "Bind succes!"  # Successful binding to the voice chat server.
+  cmd-bind-disconnect: "Bind mislukt! Check je key en probeer /voice bind <key>"  # Error message during binding to the voice chat server.
+  cmd-bind-invalid-data: "Ongeldige bind data!"  # Message indicating invalid bind data.
+  cmd-bind-not-available: "Je bent al verbonden met de voice chat."  # Message indicating that a connection to the voice chat already exists.
+
+  cmd-setup-success: "Setup succes! Herladen..."  # Successful setup of connection data.
+  cmd-setup-invalid-data: "Ongeldige commando argumenten. Gebruik: /voice setup <host> <port> <server-key>"  # Error message for invalid command arguments during setup.
+
+  cmd-invalid-args: "Ongeldig commando gebruik. Gebruik: /voice <reload | connect | setup | bind>"  # Error message for invalid command usage.
+
+  cmd-not-player: "Alleen spelers kunnen dit commando gebruiken!"  # Error message for command use restricted to players only.
+  cmd-not-exists: "Dit commando bestaat niet."  # Message indicating that the command does not exist.
+
+  plugin-reload-pl: "Speler $player heeft de plugin herladen."  # Player-triggered plugin reload message.
+  plugin-reload: "Speler $player heeft de plugin herladen."  # Player-triggered plugin reload message.
+
+  plugin-config-loaded: "Configuratie geladen."  # Message indicating successful loading of the configuration.
+  plugin-command-executor: "Uitvoerders voor commando's ingeschakeld."  # Message indicating successful enabling of command executors.
+
+  plugin-connect-connect: "Verbonden met voicechatserver."  # Successful connection to the voice chat server.
+  plugin-connect-proxy: "Proxy gebaseerde server setup. Niet verbinden met voicechatserver."  # Velocity based voice chat server connection.
+  plugin-connect-disconnect: "Er is een fout opgetreden bij de verbinding met de voicechatserver. Voer /voice uit <herladen | verbinden> om opnieuw verbinding te maken."  # Error message during connection to the voice chat server.
+  plugin-connect-invalid-data: "Verbinding mislukt. Ongeldige configuratie."  # Error message indicating failed connection due to invalid configuration.
+
+  plugin-connection-lost: "Verbinding met voicechatserver verloren." # Message when connection is lost.
+  plugin-connection-lost-reconnect: "Verbinding met voicechatserver verloren. Opnieuw verbinding proberen te maken..." # Message when connection is lost and when reconnecting
+  plugin-connection-reconnecting-attempt: "Opnieuw verbinden met server... Poging: $attempt" # Message when reconnecting
+  plugin-connection-reconnecting-success: "Met succes herverbonden met voicechatserver." # Message when reconnected to the server
+  plugin-connection-reconnecting-failed-retry: "Connectie mislukt, Opnieuw proberen..." # Message when reconnecting failed and retrying it
+  plugin-connection-reconnecting-failed: "Opnieuw verbinden met voicechatserver mislukt." # Message when reconnecting failed after 5 tries
+
+  plugin-autobind-success: "AutoBind succes!"  # Successful AutoBind execution.
+  plugin-autobind-failed: "AutoBind mislukt! Zit je niet in de VoiceCraft app?"  # Error message during failed AutoBind execution.
+
+  player-disconnect-success: "Speler $player heeft de voicechat verlaten."  # Message indicating player leaving the voice chat.
+  player-disconnect-failed: "Speler $player ontving een foutmelding bij het verlaten van de voicechat."  # Error message during player leaving the voice chat.
+
+  player-connect: "Speler $player neemt deel aan de voicechat."  # Message indicating player joining the voice chat.

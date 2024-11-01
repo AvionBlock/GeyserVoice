@@ -1,0 +1,32 @@
+name: {{ name }}
+
+version: {{ version }}
+
+main: io.greitan.mineserv.bungeecord.GeyserVoice
+description: {{ description }}
+
+author: Alpha
+website: {{ url }}
+
+prefix: {{ name }}
+
+
+commands:
+  voice:
+    description: Voice chat main command.
+    usage: /voice <bind|setup|connect|reload>
+    permission: voice.cmd
+
+permissions:
+  voice.cmd:
+    default: true
+  voice.bind:
+    default: true
+  voice.connect:
+    default: op
+  voice.reload:
+    default: op
+  voice.setup:
+    default: op
+  voice.settings:
+    default: op

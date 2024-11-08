@@ -2,14 +2,13 @@ name: {{ name }}
 
 version: {{ version }}
 
-main: io.greitan.mineserv.bungeecord.GeyserVoice
+main: io.greitan.avion.bungeecord.GeyserVoice
 description: {{ description }}
 
 author: Alpha
 website: {{ url }}
 
 prefix: {{ name }}
-
 
 commands:
   voice:

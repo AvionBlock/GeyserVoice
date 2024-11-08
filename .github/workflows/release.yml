@@ -66,7 +66,7 @@ jobs:
           artifacts: |
             build/libs/GeyserVoice-*.jar
         env:
-          GITHUB_REPOSITORY: mineserv-top/GeyserVoice
+          GITHUB_REPOSITORY: AvionBlock/GeyserVoice
 
       - name: Create pre-release
         if: github.event.inputs.status != 'stable'
@@ -77,4 +77,4 @@ jobs:
           artifacts: |
             build/libs/GeyserVoice-*.jar
         env:
-          GITHUB_REPOSITORY: mineserv-top/GeyserVoice
+          GITHUB_REPOSITORY: AvionBlock/GeyserVoice

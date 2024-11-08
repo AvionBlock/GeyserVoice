@@ -1,14 +1,15 @@
-name: { { name } }
+name: {{ name }}
 
-version: { { version } }
+version: {{ version }}
 
-main: io.greitan.avion.bungeecord.GeyserVoice
-description: { { description } }
+main: io.greitan.mineserv.bungeecord.GeyserVoice
+description: {{ description }}
 
 author: Alpha
-website: { { url } }
+website: {{ url }}
 
-prefix: { { name } }
+prefix: {{ name }}
+
 
 commands:
   voice:

@@ -78,3 +78,19 @@ jobs:
             build/libs/GeyserVoice-*.jar
         env:
           GITHUB_REPOSITORY: AvionBlock/GeyserVoice
+
+      - name: Create Modrinth release
+        if: github.event.inputs.status == 'stable'
+        uses: dsx137/modrinth-release-action@main
+        env:
+            MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+        with:
+            name: GeyserVoice ${{ github.event.inputs.tag }}
+            project_id: WtPu56Wa
+            loaders: paper, spigot, bukkit, purpur, velocity, bungeecord
+            game_versions: 1.20.2:1.21.3
+            version_number: ${{ github.event.inputs.tag }}
+            featured: github.event.inputs.status == 'stable'
+            version_type: ${{ github.event.inputs.status == 'stable' && 'release' || 'beta' }}
+            files: |
+                ./build/libs/GeyserVoice-*.jar

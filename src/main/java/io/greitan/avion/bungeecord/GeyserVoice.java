@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.greitan.avion.bungeecord.commands.VoiceCommand;
 import io.greitan.avion.bungeecord.listeners.*;
+import io.greitan.avion.common.BaseGeyserVoice;
 import io.greitan.avion.common.network.Network;
 import io.greitan.avion.common.network.Payloads.PlayerData;
 import io.greitan.avion.bungeecord.tasks.PositionsTask;
@@ -28,7 +29,7 @@ import java.util.Objects;
 import java.util.Map;
 import java.util.HashMap;
 
-public class GeyserVoice extends Plugin { // implements BaseGeyserVoice {
+public class GeyserVoice extends Plugin implements BaseGeyserVoice {
     private static @Getter Configuration config;
 
     private static @Getter GeyserVoice instance;

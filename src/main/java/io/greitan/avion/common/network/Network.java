@@ -54,7 +54,9 @@ public class Network {
                 return null;
             }
         } catch (Exception e) {
-            Logger.error("Can't connect to voice chat server! " + e.toString());
+            String message = e.getMessage();
+            if (message == null) message = e.toString();
+            Logger.error("Can't connect to voice chat server! " + message + ". Please check your address and port!");
             return null;
         }
     }
@@ -78,15 +80,13 @@ public class Network {
                 AcceptPacket packetData = objectMapper.convertValue(response, AcceptPacket.class);
                 return packetData.Token;
             }
-            /*
-             * else if (response.PacketId == PacketType.Deny.ordinal())
-             * {
-             * DenyPacket packetData = objectMapper.convertValue(response,
-             * DenyPacket.class);
-             * // Login Denied. Server denied link request! Reason:
-             * return "DENIED! " + packetData.Reason;
-             * }
-             */
+            else if (response.PacketId == PacketType.Deny.ordinal() || response instanceof DenyPacket)
+            {
+                DenyPacket packetData = objectMapper.convertValue(response, DenyPacket.class);
+                Logger.error(
+                    "Login request denied by server. Reason: " + packetData.Reason);
+                return null;
+            }
         }
         return null;
     }

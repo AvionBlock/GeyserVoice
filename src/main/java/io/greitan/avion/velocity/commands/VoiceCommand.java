@@ -1,8 +1,7 @@
 package io.greitan.avion.velocity.commands;
 
-import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.lang.NumberFormatException;
 
@@ -15,6 +14,8 @@ import net.kyori.adventure.text.format.NamedTextColor;
 
 import io.greitan.avion.velocity.GeyserVoice;
 import io.greitan.avion.velocity.utils.Language;
+import io.greitan.avion.common.utils.HasPermissionOperation;
+import io.greitan.avion.common.utils.VoiceCommandCompletions;
 
 public final class VoiceCommand implements SimpleCommand {
 
@@ -72,13 +73,21 @@ public final class VoiceCommand implements SimpleCommand {
                 // Setup command - setup the configuration.
                 else if (args[0].equalsIgnoreCase("setup") && player.hasPermission("voice.setup")) {
                     String newHost = args[1];
-                    String newPort = args[2];
+                    String newPortString = args[2];
+                    Integer newPort = -1;
                     String newKey = args[3];
+                    try {
+                        if (Objects.nonNull(newPortString)) {
+                            newPort = Integer.parseInt(newPortString);
+                        }
+                    } catch (NumberFormatException e) {
+                        newPort = -1;
+                    }
 
-                    if (Objects.nonNull(newHost) && Objects.nonNull(newPort) && Objects.nonNull(newKey)) {
-                        GeyserVoice.getConfig().set("config.host", newHost);
-                        GeyserVoice.getConfig().set("config.port", newPort);
-                        GeyserVoice.getConfig().set("config.server-key", newKey);
+                    if (Objects.nonNull(newHost) && Objects.nonNull(newPortString) && Objects.nonNull(newKey) && newPort != -1) {
+                        plugin.getConfig().set("config.host", newHost);
+                        plugin.getConfig().set("config.port", newPort);
+                        plugin.getConfig().set("config.server-key", newKey);
                         plugin.saveConfig();
                         plugin.reloadConfig();
                         plugin.reload();
@@ -136,8 +145,6 @@ public final class VoiceCommand implements SimpleCommand {
             }
             // Command not for console.
             else {
-                plugin.getProxy().sendMessage(Component.text("####CheckMessaging####"));
-
                 sender.sendMessage(
                         Component.text(Language.getMessage(lang, "cmd-not-player")).color(NamedTextColor.RED));
             }
@@ -150,35 +157,17 @@ public final class VoiceCommand implements SimpleCommand {
 
     @Override
     public boolean hasPermission(final Invocation invocation) {
-        return true;
-        // return invocation.source().hasPermission("command.test");
+        return invocation.source().hasPermission("voice.cmd");
     }
 
     @Override
-    public CompletableFuture<List<String>> suggestAsync(final Invocation invocation) {
+    public List<String> suggest(final Invocation invocation) {
         String[] args = invocation.arguments();
-        return CompletableFuture.supplyAsync(() -> {
-            List<String> completions = List.of();
-
-            // Main command arguments.
-            if (args.length == 1) {
-                List<String> options = List.of("bind", "setup", "connect", "reload");
-                completions = options.stream().filter(val -> val.startsWith(args[0])).collect(Collectors.toList());
+        return VoiceCommandCompletions.execute(args, new HasPermissionOperation() {
+            @Override
+            public boolean execute(String permission) {
+                return invocation.source().hasPermission(permission);
             }
-
-            // Setup command arguments.
-            if (args.length == 2 && args[0].equalsIgnoreCase("setup")) {
-                List<String> options = List.of("host port key");
-                completions = options.stream().filter(val -> val.startsWith(args[1])).collect(Collectors.toList());
-            }
-
-            // Connect command arguments.
-            if (args.length == 2 && args[0].equalsIgnoreCase("connect")) {
-                List<String> options = List.of("true", "false");
-                completions = options.stream().filter(val -> val.startsWith(args[1])).collect(Collectors.toList());
-            }
-
-            return completions;
         });
     }
 }

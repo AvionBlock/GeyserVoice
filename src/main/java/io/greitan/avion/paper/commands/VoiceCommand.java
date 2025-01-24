@@ -2,7 +2,7 @@ package io.greitan.avion.paper.commands;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Collections;
+import java.util.stream.Collectors;
 import java.lang.NumberFormatException;
 
 import org.bukkit.command.Command;
@@ -17,6 +17,8 @@ import net.kyori.adventure.text.format.NamedTextColor;
 
 import io.greitan.avion.paper.GeyserVoice;
 import io.greitan.avion.paper.utils.Language;
+import io.greitan.avion.common.utils.HasPermissionOperation;
+import io.greitan.avion.common.utils.VoiceCommandCompletions;
 
 public class VoiceCommand implements CommandExecutor, TabCompleter {
 
@@ -70,10 +72,18 @@ public class VoiceCommand implements CommandExecutor, TabCompleter {
                 // Setup command - setup the configuration.
                 else if (args[0].equalsIgnoreCase("setup") && player.hasPermission("voice.setup")) {
                     String newHost = args[1];
-                    String newPort = args[2];
+                    String newPortString = args[2];
+                    Integer newPort = -1;
                     String newKey = args[3];
+                    try {
+                        if (Objects.nonNull(newPortString)) {
+                            newPort = Integer.parseInt(newPortString);
+                        }
+                    } catch (NumberFormatException e) {
+                        newPort = -1;
+                    }
 
-                    if (Objects.nonNull(newHost) && Objects.nonNull(newPort) && Objects.nonNull(newKey)) {
+                    if (Objects.nonNull(newHost) && Objects.nonNull(newPortString) && Objects.nonNull(newKey) && newPort != -1) {
                         plugin.getConfig().set("config.host", newHost);
                         plugin.getConfig().set("config.port", newPort);
                         plugin.getConfig().set("config.server-key", newKey);
@@ -147,28 +157,11 @@ public class VoiceCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
-        List<String> completions = List.of();
-
-        // Main command arguments.
-        if (args.length == 1) {
-            List<String> options = List.of("bind", "setup", "connect", "reload");
-            StringUtil.copyPartialMatches(args[0], options, completions);
-        }
-
-        // Setup command arguments.
-        if (args.length == 2 && args[0].equalsIgnoreCase("setup")) {
-            List<String> options = List.of("host port key");
-            StringUtil.copyPartialMatches(args[1], options, completions);
-        }
-
-        // Connect command arguments.
-        if (args.length == 2 && args[0].equalsIgnoreCase("connect")) {
-            List<String> options = List.of("true", "false");
-            StringUtil.copyPartialMatches(args[1], options, completions);
-        }
-
-        Collections.sort(completions);
-        return completions;
+        return VoiceCommandCompletions.execute(args, new HasPermissionOperation() {
+            @Override
+            public boolean execute(String permission) {
+                return sender.hasPermission(permission);
+            }
+        });
     }
-
 }

@@ -7,6 +7,8 @@ import net.md_5.bungee.api.scheduler.ScheduledTask;
 import net.md_5.bungee.config.ConfigurationProvider;
 import net.md_5.bungee.config.Configuration;
 import net.md_5.bungee.config.YamlConfiguration;
+import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -97,7 +99,8 @@ public class GeyserVoice extends Plugin implements BaseGeyserVoice {
         port = getConfig().getInt("config.port");
         serverKey = getConfig().getString("config.server-key");
 
-        isConnected = connect(true);
+        if (getConfig().getBoolean("config.auto-reconnect"))
+            isConnected = reconnect(true);
 
         int positionTaskInterval = getConfig().getInt("config.voice.position-task-interval", 1);
         taskRunner.cancel();
@@ -113,31 +116,90 @@ public class GeyserVoice extends Plugin implements BaseGeyserVoice {
     }
 
     /**
+     * Connects to a new server.
+     *
+     * @param host The host to connect to.
+     * @param port The port to connect to.
+     * @param serverKey The server key.
+     * @return True if connected successfully, otherwise false.
+     */
+    public Boolean connect(String host, int port, String serverKey) {
+        if (Objects.nonNull(host) && Objects.nonNull(serverKey)) {
+            getConfig().set("config.host", host);
+            getConfig().set("config.port", port);
+            getConfig().set("config.server-key", serverKey);
+            saveConfig();
+            reloadConfig();
+            reload();
+
+            return isConnected;
+        } else {
+            Logger.warn(Language.getMessage(lang, "plugin-connect-invalid-data"));
+            return false;
+        }
+    }
+
+    /**
      * Connects to the server.
      *
      * @param force Indicates whether to force a connection.
      * @return True if connected successfully, otherwise false.
      */
-    public Boolean connect(Boolean force) {
+    public Boolean reconnect(Boolean force) {
         if (isConnected && !force)
             return true;
-        isConnected = false;
+        if (isConnected) {
+            disconnect("Reconnecting to another server.");
+        }
 
         if (Objects.nonNull(host) && Objects.nonNull(serverKey)) {
             String link = "http://" + host + ":" + port;
             String Token = network.sendLoginRequest(link, serverKey);
             if (Objects.nonNull(Token)) {
-                Logger.info(Language.getMessage(lang, "plugin-connect-connect"));
+                Logger.info(Language.getMessage(lang, "plugin-connect-connected"));
                 isConnected = true;
                 token = Token;
             } else {
-                Logger.warn(Language.getMessage(lang, "plugin-connect-disconnect"));
+                Logger.warn(Language.getMessage(lang, "plugin-connect-failed"));
             }
             return isConnected;
         } else {
             Logger.warn(Language.getMessage(lang, "plugin-connect-invalid-data"));
             return false;
         }
+    }
+
+    /**
+     * Disconnects from the server.
+     *
+     * @param reason The reason why we disconnected
+     */
+    public void disconnect(String reason) {
+        if (!isConnected)
+            return;
+
+        if (Objects.nonNull(host) && Objects.nonNull(serverKey)) {
+            String link = "http://" + host + ":" + port;
+            network.sendLogoutRequest(link, token);
+            isConnected = false;
+
+            String disconnectMessage = Language.getMessage(lang, "plugin-connection-disconnect").replace("$reason", reason);
+            Logger.info(disconnectMessage);
+
+            boolean sendVoipDisconnectMessage = getConfig().getBoolean("config.voice.send-voip-disconnect-message");
+            if (sendVoipDisconnectMessage) {
+                getProxy().broadcast(new ComponentBuilder(disconnectMessage).color(ChatColor.YELLOW).create());
+            }
+        } else {
+            Logger.warn(Language.getMessage(lang, "plugin-connect-invalid-data"));
+        }
+    }
+    
+    /**
+     * Disconnects from the server.
+     */
+    public void disconnect() {
+        disconnect("N.A.");
     }
 
     /**
@@ -150,6 +212,11 @@ public class GeyserVoice extends Plugin implements BaseGeyserVoice {
     public Boolean bind(int playerKey, ProxiedPlayer player, int tries) {
         if (!isConnected || Objects.isNull(host) || Objects.isNull(serverKey))
             return false;
+            
+        if (playerBinds.containsKey(player.getName()) && playerBinds.get(player.getName())) {
+            return true;
+        }
+            
         String link = "http://" + host + ":" + port;
 
         getConfig().set("config.players." + player.getName(), playerKey);
@@ -162,13 +229,28 @@ public class GeyserVoice extends Plugin implements BaseGeyserVoice {
             if (result == "SUCCESS") {
                 playerBinds.put(player.getName(), true);
                 messageHandler.sendPlayerBindSync(player);
-                return true;
-            } else {
-                if (result == "Invalid Token!" && tries == 0) {
-                    Logger.info("Invalid Token detected, reconnecting...");
-                    isConnected = connect(true);
-                    return bind(playerKey, player, 1);
+
+                Logger.info(Language.getMessage(lang, "player-binded").replace("$player",player.getName()));
+
+                boolean sendBindedMessage = getConfig().getBoolean("config.voice.send-binded-message");
+                if (sendBindedMessage) {
+                    getProxy().broadcast(
+                        new ComponentBuilder(player.getName()).bold(true)
+                        .append(
+                            new ComponentBuilder(
+                                Language.getMessage(lang, "player-binded")
+                                    .replace("$player", "")
+                            )
+                            .color(ChatColor.DARK_GREEN)
+                            .create()
+                        ).create()
+                    );
                 }
+                return true;
+            } else if (result == "Invalid Token!" && tries == 0) {
+                Logger.info("Invalid Token detected, reconnecting...");
+                isConnected = reconnect(true);
+                return bind(playerKey, player, 1);
             }
         }
         messageHandler.sendPlayerBindSync(player);
@@ -177,6 +259,60 @@ public class GeyserVoice extends Plugin implements BaseGeyserVoice {
 
     public Boolean bind(int playerKey, ProxiedPlayer player) {
         return bind(playerKey, player, 0);
+    }
+
+    /**
+     * Bind a fake player
+     * @param bindKey
+     * @param name
+     * @return
+     */
+    public Boolean bindFake(int playerKey, String name, int tries) {
+        if (!isConnected || Objects.isNull(host) || Objects.isNull(serverKey))
+            return false;
+            
+        if (playerBinds.containsKey(name) && playerBinds.get(name)) {
+            return true;
+        }
+            
+        String link = "http://" + host + ":" + port;
+
+        String result = network.sendBindRequest(link, token, playerKey, String.format("%0", playerKey), name);
+        playerBinds.put(name, false);
+        if (result != null) {
+            if (result == "SUCCESS") {
+                playerBinds.put(name, true);
+                // messageHandler.sendPlayerBindSync(player);
+
+                Logger.info(Language.getMessage(lang, "player-binded").replace("$player", name));
+
+                boolean sendBindedMessage = getConfig().getBoolean("config.voice.send-binded-message");
+                if (sendBindedMessage) {
+                    getProxy().broadcast(
+                        new ComponentBuilder(name).bold(true)
+                        .append(
+                            new ComponentBuilder(
+                                Language.getMessage(lang, "player-binded")
+                                    .replace("$player", "")
+                            )
+                            .color(ChatColor.DARK_GREEN)
+                            .create()
+                        ).create()
+                    );
+                }
+                return true;
+            } else if (result == "Invalid Token!" && tries == 0) {
+                Logger.info("Invalid Token detected, reconnecting...");
+                isConnected = reconnect(true);
+                return bindFake(playerKey, name, 1);
+            }
+        }
+        // messageHandler.sendPlayerBindSync(player);
+        return false;
+    }
+
+    public Boolean bindFake(int playerKey, String name) {
+        return bindFake(playerKey, name, 0);
     }
 
     /**
@@ -198,7 +334,7 @@ public class GeyserVoice extends Plugin implements BaseGeyserVoice {
                 return true;
             } else if (result == "Invalid Token!" && tries == 0) {
                 Logger.info("Invalid Token detected, reconnecting...");
-                isConnected = connect(true);
+                isConnected = reconnect(true);
                 return disconnectPlayer(player, 1);
             }
         }

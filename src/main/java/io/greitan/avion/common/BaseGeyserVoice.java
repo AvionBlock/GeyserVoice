@@ -19,12 +19,51 @@ public interface BaseGeyserVoice {
     abstract public void reload();
 
     /**
-     * Connects to the server.
+     * Connects to a new server.
+     *
+     * @param host The host to connect to.
+     * @param port The port to connect to.
+     * @param serverKey The server key.
+     * @return True if connected successfully, otherwise false.
+     */
+    abstract public Boolean connect(String host, int port, String serverKey);
+
+    /**
+     * Reconnects to the server.
      *
      * @param force Indicates whether to force a connection.
      * @return True if connected successfully, otherwise false.
      */
-    abstract public Boolean connect(Boolean force);
+    abstract public Boolean reconnect(Boolean force);
+    
+    /**
+     * Disconnects from the server.
+     *
+     * @param reason The reason why we disconnected
+     */
+    abstract public void disconnect(String reason);
+    
+    /**
+     * Disconnects from the server.
+     */
+    abstract public void disconnect();
+
+    /**
+     * Bind a fake player
+     * @param bindKey
+     * @param name
+     * @param tries
+     * @return
+     */
+    abstract public Boolean bindFake(int bindKey, String name, int tries);
+    
+    /**
+     * Bind a fake player
+     * @param bindKey
+     * @param name
+     * @return
+     */
+    abstract public Boolean bindFake(int bindKey, String name);
 
     /**
      * Updates the voice chat settings.
@@ -42,4 +81,7 @@ public interface BaseGeyserVoice {
     abstract public void setNotConnected();
 
     abstract public void saveResource(String resourcePath);
+
+    abstract public void saveConfig();
+    abstract public void reloadConfig();
 }

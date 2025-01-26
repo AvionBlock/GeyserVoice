@@ -1,10 +1,5 @@
 package io.greitan.avion.velocity.commands;
 
-import java.util.Objects;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.lang.NumberFormatException;
-
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.proxy.Player;
@@ -14,17 +9,23 @@ import net.kyori.adventure.text.format.NamedTextColor;
 
 import io.greitan.avion.velocity.GeyserVoice;
 import io.greitan.avion.velocity.utils.Language;
-import io.greitan.avion.common.utils.HasPermissionOperation;
-import io.greitan.avion.common.utils.VoiceCommandCompletions;
+import io.greitan.avion.common.commands.BaseVoiceCommand;
+import io.greitan.avion.common.utils.IntegerOperation;
+import io.greitan.avion.common.utils.StringOperation;
+import io.greitan.avion.common.utils.DoubleStringOperation;
+import io.greitan.avion.common.utils.EmptyOperation;
+
+import java.util.List;
 
 public final class VoiceCommand implements SimpleCommand {
 
+    private final BaseVoiceCommand voiceCommand;
     private final GeyserVoice plugin;
     private final String lang;
-    private boolean isConnected = false;
 
     // Get the plugin and lang interfaces.
     public VoiceCommand(GeyserVoice plugin, String lang) {
+        this.voiceCommand = new BaseVoiceCommand(plugin);
         this.plugin = plugin;
         this.lang = lang;
     }
@@ -35,124 +36,57 @@ public final class VoiceCommand implements SimpleCommand {
         // Get the arguments after the command alias
         String[] args = invocation.arguments();
 
-        isConnected = plugin.isConnected();
-
-        if (sender instanceof Player) {
-            Player player = (Player) sender;
-            if (args.length >= 1) {
-                // Bind command - bind player.
-                if (args[0].equalsIgnoreCase("bind") && player.hasPermission("voice.bind") && isConnected) {
-                    if (args.length >= 2 && Objects.nonNull(args[1])) {
-                        int bindKey;
-                        try {
-                            bindKey = Integer.parseInt(args[1]);
-                        } catch (NumberFormatException e) {
-                            player.sendMessage(Component.text(Language.getMessage(lang, "cmd-invalid-args"))
-                                    .color(NamedTextColor.RED));
-                            return;
-                        }
-                        /*
-                         * if (bindKey == 0) {
-                         * player.sendMessage("Here is your open key!");
-                         * return;
-                         * }
-                         */
-                        Boolean isBound = plugin.bind(bindKey, player);
-                        if (isBound) {
-                            player.sendMessage(Component.text(Language.getMessage(lang, "cmd-bind-connect"))
-                                    .color(NamedTextColor.AQUA));
-                        } else {
-                            player.sendMessage(Component.text(Language.getMessage(lang, "cmd-bind-disconnect"))
-                                    .color(NamedTextColor.RED));
-                        }
-                    } else {
-                        player.sendMessage(Component.text(Language.getMessage(lang, "cmd-invalid-args"))
-                                .color(NamedTextColor.RED));
-                    }
+        this.voiceCommand.onCommand(
+            args,
+            plugin.isConnected(),
+            sender instanceof Player,
+            new StringOperation() {
+                @Override
+                public boolean execute(String permission) {
+                    if (sender instanceof Player)
+                        return sender.hasPermission(permission);
+                    else
+                        return true;
                 }
-                // Setup command - setup the configuration.
-                else if (args[0].equalsIgnoreCase("setup") && player.hasPermission("voice.setup")) {
-                    String newHost = args[1];
-                    String newPortString = args[2];
-                    Integer newPort = -1;
-                    String newKey = args[3];
-                    try {
-                        if (Objects.nonNull(newPortString)) {
-                            newPort = Integer.parseInt(newPortString);
-                        }
-                    } catch (NumberFormatException e) {
-                        newPort = -1;
-                    }
+            },
+            new DoubleStringOperation() {
+                @Override
+                public void execute(String text, String rawColor) {
+                    NamedTextColor color = NamedTextColor.RED;
+                    if (rawColor == "red") color = NamedTextColor.RED;
+                    else if (rawColor == "aqua") color = NamedTextColor.AQUA;
+                    else if (rawColor == "green") color = NamedTextColor.GREEN;
+                    else if (rawColor == "yellow") color = NamedTextColor.YELLOW;
 
-                    if (Objects.nonNull(newHost) && Objects.nonNull(newPortString) && Objects.nonNull(newKey) && newPort != -1) {
-                        plugin.getConfig().set("config.host", newHost);
-                        plugin.getConfig().set("config.port", newPort);
-                        plugin.getConfig().set("config.server-key", newKey);
-                        plugin.saveConfig();
-                        plugin.reloadConfig();
-                        plugin.reload();
-
-                        player.sendMessage(Component.text(Language.getMessage(lang, "cmd-setup-success"))
-                                .color(NamedTextColor.AQUA));
-                    } else {
-                        player.sendMessage(Component.text(Language.getMessage(lang, "cmd-setup-invalid-data"))
-                                .color(NamedTextColor.RED));
-                    }
+                    var message = Component.text(Language.getMessage(lang, text)).color(color);
+                    if (sender instanceof Player)
+                        sender.sendMessage(message);
+                    else
+                        plugin.Logger.log(message);
                 }
-                // Connect command - connect to the VoiceCraft server.
-                else if (args[0].equalsIgnoreCase("connect") && player.hasPermission("voice.connect")) {
-                    if (Objects.nonNull(args[1])) {
-                        Boolean force = Boolean.valueOf(args[1]);
-
-                        Boolean connected = plugin.connect(force);
-                        if (connected) {
-                            player.sendMessage(Component.text(Language.getMessage(lang, "plugin-connect-connect"))
-                                    .color(NamedTextColor.AQUA));
-                        } else {
-                            player.sendMessage(Component.text(Language.getMessage(lang, "plugin-connect-disconnect"))
-                                    .color(NamedTextColor.RED));
-                        }
-                    } else {
-                        player.sendMessage(Component.text(Language.getMessage(lang, "cmd-invalid-args"))
-                                .color(NamedTextColor.RED));
+            },
+            new IntegerOperation() {
+                @Override
+                public boolean execute(int key) {
+                    if (sender instanceof Player) {
+                        Player player = (Player) sender;
+                        return plugin.bind(key, player);
+                    } 
+                    return false;
+                }
+            },
+            new EmptyOperation() {
+                @Override
+                public boolean execute() {
+                    if (sender instanceof Player) {
+                        Player player = (Player) sender;
+                        GeyserVoice.getConfig().set("config.players." + player.getUsername(), null);
+                        return true;
                     }
-                }
-                // Reload command - reload the configs.
-                else if (args[0].equalsIgnoreCase("reload") && player.hasPermission("voice.reload")) {
-                    plugin.reload();
-                    player.sendMessage(
-                            Component.text(Language.getMessage(lang, "cmd-reload")).color(NamedTextColor.GREEN));
-                } else if (args[0].equalsIgnoreCase("settings") && player.hasPermission("voice.settings")) {
-                    int proximityDistance = 1;
-                    Boolean proximityToggle = true;
-                    Boolean voiceEffects = true;
-
-                    plugin.updateSettings(proximityDistance, proximityToggle, voiceEffects);
-                }
-                // Command select invalid.
-                else {
-                    player.sendMessage(
-                            Component.text(Language.getMessage(lang, "cmd-invalid-args")).color(NamedTextColor.RED));
+                    return false;
                 }
             }
-        }
-        // Commands runned by console.
-        else if (args.length >= 1) {
-            // Reload command - reload the configs.
-            if (args[0].equalsIgnoreCase("reload")) {
-                plugin.reload();
-                plugin.Logger.log(Component.text(Language.getMessage(lang, "cmd-reload")).color(NamedTextColor.GREEN));
-            }
-            // Command not for console.
-            else {
-                sender.sendMessage(
-                        Component.text(Language.getMessage(lang, "cmd-not-player")).color(NamedTextColor.RED));
-            }
-        }
-        // Invalid command arguments.
-        else {
-            sender.sendMessage(Component.text(Language.getMessage(lang, "cmd-invalid-args")).color(NamedTextColor.RED));
-        }
+        );
     }
 
     @Override
@@ -163,7 +97,7 @@ public final class VoiceCommand implements SimpleCommand {
     @Override
     public List<String> suggest(final Invocation invocation) {
         String[] args = invocation.arguments();
-        return VoiceCommandCompletions.execute(args, new HasPermissionOperation() {
+        return voiceCommand.onTabComplete(args, new StringOperation() {
             @Override
             public boolean execute(String permission) {
                 return invocation.source().hasPermission(permission);

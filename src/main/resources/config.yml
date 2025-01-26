@@ -19,8 +19,9 @@ config:
     not-in-voice-symbol: "\u2727"      # Symbol for a player not in voice chat (placeholder %voice_status%)
     in-voice-symbol: "\u2726"          # Symbol for a player in voice chat
 
-    send-connect-message: true         # Send message when a player connects to voice chat
+    send-binded-message: true         # Send message when a player connects to voice chat
     send-disconnect-message: true      # Send message when a player disconnects from voice chat
+    send-voip-disconnect-message: true # Send message when the server connection is closed
     send-connection-lost-message: true # Send message when the connection is lost from the voice chat server
     
     # The speed and accuracy of player positioning in voice chat depends on this. 

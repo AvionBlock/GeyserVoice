@@ -40,20 +40,16 @@ public class PlayerJoinHandler {
     }
 
     private void handleAutoBind(int playerBindKey, Player player) {
+        player.sendMessage(
+            Component.text(Language.getMessage(lang, "plugin-autobind-enabled")).color(NamedTextColor.GREEN)
+            .append(Component.text(" "))
+            .append(
+                Component.text(Language.getMessage(lang, "plugin-autobind-binding")).color(NamedTextColor.YELLOW)
+            ));
+
         boolean isBound = plugin.bind(playerBindKey, player);
 
-        if (isBound) {
-            String playerName = player.getUsername();
-            String connectMessage = Language.getMessage(lang, "player-connect").replace("$player", playerName);
-
-            plugin.Logger.info(connectMessage);
-
-            boolean sendConnectMessage = GeyserVoice.getConfig().getBoolean("config.voice.send-connect-message");
-            if (sendConnectMessage) {
-                // @TODO send to proxies -> Already works...
-                plugin.getProxy().sendMessage(Component.text(connectMessage).color(NamedTextColor.YELLOW));
-            }
-        } else {
+        if (!isBound) {
             player.sendMessage(
                     Component.text(Language.getMessage(lang, "plugin-autobind-failed")).color(NamedTextColor.RED));
         }

@@ -102,7 +102,7 @@ public class PositionsTask {
             plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-reconnecting-attempt").replace("$attempt",
                     ReconnectRetries.toString()));
 
-            if (plugin.connect(true)) {
+            if (plugin.reconnect(true)) {
                 plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-reconnecting-success"));
 
                 if (GeyserVoice.getConfig().getBoolean("config.voice.send-connection-lost-message")) {

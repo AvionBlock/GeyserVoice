@@ -190,6 +190,12 @@ public class Payloads {
         public String PlayerId = "";
     }
 
+    public static class LocationData {
+        public double x = 0;
+        public double y = 0;
+        public double z = 0;
+    }
+
     public static class PlayerData {
         public String PlayerId = "";
         public String DimensionId = "";
@@ -212,10 +218,10 @@ public class Payloads {
         }
     }
 
-    public static class LocationData {
-        public double x = 0;
-        public double y = 0;
-        public double z = 0;
+    public static class ChannelOverrideData {
+        public int ProximityDistance = 30;
+        public boolean ProximityToggle = true;
+        public boolean VoiceEffects = true;
     }
 
     public static class ChannelData {
@@ -224,11 +230,5 @@ public class Payloads {
         public boolean Locked = false;
         public boolean Hidden = false;
         public ChannelOverrideData OverrideSettings = null;
-    }
-
-    public static class ChannelOverrideData {
-        public int ProximityDistance = 30;
-        public boolean ProximityToggle = true;
-        public boolean VoiceEffects = true;
     }
 }

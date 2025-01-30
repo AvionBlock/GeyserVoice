@@ -80,7 +80,6 @@ jobs:
           GITHUB_REPOSITORY: AvionBlock/GeyserVoice
 
       - name: Create Modrinth release
-        if: github.event.inputs.status == 'stable'
         uses: dsx137/modrinth-release-action@main
         env:
             MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}

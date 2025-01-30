@@ -1,16 +1,39 @@
 # en
 messages:
-  cmd-reload: "Plugin reloaded!"  # Message indicating successful plugin reload.
+  commands:
+    connect:
+      invalid-args: "Invalid command usage. Usage: /voice connect <host> <port> <server-key>"
 
-  cmd-bind-connect: "Bind success!"  # Successful binding to the voice chat server.
-  cmd-bind-disconnect: "Bind failed! Check your key and try /voice bind <key>"  # Error message during binding to the voice chat server.
-  cmd-bind-invalid-data: "Invalid bind data!"  # Message indicating invalid bind data.
-  cmd-bind-not-available: "You already connected to the voice chat."  # Message indicating that a connection to the voice chat already exists.
+    disconnect:
+      disconnecting: "Disconnecting from Server..."
+      already-disconnected: "Already disconnected from server."
+      invalid-args: "Invalid command usage. Usage: /voice disconnect"
 
-  cmd-setup-success: "Setup success! Reloading..."  # Successful setup of connection data.
-  cmd-setup-invalid-data: "Invalid command arguments. Usage: /voice setup <host> <port> <server-key>"  # Error message for invalid command arguments during setup.
+    settings:
+      nametag: "VoiceCraft Server Settings"
+      lore: "Open VoiceCraft Settings"
+      message: "You have been given an item in your inventory. Right Click/Interact with the item to open the settings UI"
 
-  cmd-invalid-args: "Invalid command usage. Usage: /voice <reload | connect | setup | bind>"  # Error message for invalid command usage.
+    bind:
+      binding: "Binding..."
+      binded: "Binding Successful!"
+      failed: "Binding Failed! Check your key and try again!"
+      broadcast: "$player has connected to VoiceCraft!"
+      binding-fake: "Binding fake player..."
+      invalid-args: "Invalid command usage. Usage: /voice bind <key>"
+      fake-invalid-args: "Invalid command usage. Usage: /voice bindfake <key> <name>"
+
+    updatefake:
+      updating: "Updating fake player..."
+      updated: "Update Successful!"
+      failed: "Update Failed!"
+      invalid-args: "Invalid command usage. Usage: /voice bindfake <key> <name>"
+
+    clearautobind: "Successfully cleared autobind!"
+
+    reload: "Plugin reloaded!"
+
+  cmd-invalid-args: "Invalid command usage. Usage: /voice <connect | reconnect | disconnect | settings | bind | bindfake | updatefake | clearautobind | reload>"  # Error message for invalid command usage.
 
   cmd-not-player: "Only players can use this command!"  # Error message for command use restricted to players only.
   cmd-not-exists: "This command is not exist."  # Message indicating that the command does not exist.
@@ -21,9 +44,10 @@ messages:
   plugin-config-loaded: "Config loaded."  # Message indicating successful loading of the configuration.
   plugin-command-executor: "Commands executors enabled."  # Message indicating successful enabling of command executors.
 
-  plugin-connect-connect: "Connected to voice chat server."  # Successful connection to the voice chat server.
+  plugin-connect-connecting: "Connecting/Linking Server..."  # Successful connection to the voice chat server.
+  plugin-connect-connected: "Login Accepted. Server successfully linked!"  # Successful connection to the voice chat server.
+  plugin-connect-failed: "Login Failed! Server not linked! Run /voice <reload | reconnect> to reconnect."  # Error message during connection to the voice chat server.
   plugin-connect-proxy: "Proxy based server setup. Not connecting to voice chat server."  # Velocity/Bungeecord based voice chat server connection.
-  plugin-connect-disconnect: "Connection to voice chat server had error. Run /voice <reload | connect> to reconnect."  # Error message during connection to the voice chat server.
   plugin-connect-invalid-data: "Connection failed. Invalid config."  # Error message indicating failed connection due to invalid configuration.
 
   plugin-connection-lost: "Lost connection from voice chat server." # Message when connection is lost.
@@ -32,6 +56,9 @@ messages:
   plugin-connection-reconnecting-success: "Successfully reconnected to voice chat server." # Message when reconnected to the server
   plugin-connection-reconnecting-failed-retry: "Connection failed, Retrying..." # Message when reconnecting failed and retrying it
   plugin-connection-reconnecting-failed: "Failed to reconnect to voice chat server." # Message when reconnecting failed after 5 tries
+  plugin-connection-disconnecting: "Disconnecting from Server..." # Message when disconnecting
+  plugin-connection-already-disconnected: "Already disconnected from server." # Message when already disconnected
+  plugin-connection-disconnect: "Disconnected from VOIP Server, Reason: $reason" # Message when disconnect
 
   plugin-autobind-success: "AutoBind success!"  # Successful AutoBind execution.
   plugin-autobind-failed: "AutoBind failed! Are you not in the VoiceCraft app?"  # Error message during failed AutoBind execution.
@@ -39,4 +66,4 @@ messages:
   player-disconnect-success: "Player $player left from the voice chat."  # Message indicating player leaving the voice chat.
   player-disconnect-failed: "Player $player received an error when leaving the voice chat."  # Error message during player leaving the voice chat.
 
-  player-connect: "Player $player joined the voice chat."  # Message indicating player joining the voice chat.
+  player-binded: "$player has connected to VoiceCraft."  # Message indicating player joining the voice chat.

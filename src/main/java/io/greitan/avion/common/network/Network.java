@@ -11,6 +11,7 @@ import io.greitan.avion.common.utils.BaseLogger;
 import io.greitan.avion.common.network.Payloads.PacketType;
 import io.greitan.avion.common.network.Payloads.MCCommPacket;
 import io.greitan.avion.common.network.Payloads.LoginPacket;
+import io.greitan.avion.common.network.Payloads.LogoutPacket;
 import io.greitan.avion.common.network.Payloads.AcceptPacket;
 import io.greitan.avion.common.network.Payloads.DenyPacket;
 import io.greitan.avion.common.network.Payloads.BindPacket;
@@ -28,8 +29,7 @@ public class Network {
         this.Logger = logger;
     }
 
-    public MCCommPacket sendPostRequest(String url, MCCommPacket data) // was (String url, Object data)
-    {
+    public MCCommPacket sendPostRequest(String url, MCCommPacket data) {
         try {
             String jsonData = objectMapper.writeValueAsString(data);
             Logger.debug("Request: " + jsonData.toString());
@@ -50,11 +50,14 @@ public class Network {
             if (statusCode == 200) {
                 return objectMapper.readValue(body, MCCommPacket.class);
             } else {
-                Logger.error("Got non-200 status code: " + statusCode);
+                Logger.error("Sending HTTP Packet Failed, Reason: HTTP_EXCEPTION, STATUS_CODE: " + statusCode);
+                // throw new Exception("Sending HTTP Packet Failed, Reason: HTTP_EXCEPTION, STATUS_CODE: " + statusCode);
                 return null;
             }
         } catch (Exception e) {
-            Logger.error("Can't connect to voice chat server! " + e.toString());
+            String message = e.getMessage();
+            if (message == null) message = e.toString();
+            Logger.error("Can't connect to voice chat server! " + message);
             return null;
         }
     }
@@ -78,17 +81,30 @@ public class Network {
                 AcceptPacket packetData = objectMapper.convertValue(response, AcceptPacket.class);
                 return packetData.Token;
             }
-            /*
-             * else if (response.PacketId == PacketType.Deny.ordinal())
-             * {
-             * DenyPacket packetData = objectMapper.convertValue(response,
-             * DenyPacket.class);
-             * // Login Denied. Server denied link request! Reason:
-             * return "DENIED! " + packetData.Reason;
-             * }
-             */
+            else if (response.PacketId == PacketType.Deny.ordinal() || response instanceof DenyPacket)
+            {
+                DenyPacket packetData = objectMapper.convertValue(response, DenyPacket.class);
+                Logger.error(
+                    "Login Denied. Server denied link request! Reason: " + packetData.Reason);
+            }
+        } else {
+            Logger.error("Could not contact server. Please check if your IPAddress and Port are correct!");
         }
         return null;
+    }
+    
+    /**
+     * Sends the logout request to the server.
+     *
+     * @param link   HTTP POST link
+     * @param token  The session token
+     */
+    public void sendLogoutRequest(String link, String token) {
+        // Create request data object.
+        LogoutPacket logoutPacket = new LogoutPacket();
+        logoutPacket.Token = token;
+
+        sendPostRequest(link, logoutPacket);
     }
 
     /**

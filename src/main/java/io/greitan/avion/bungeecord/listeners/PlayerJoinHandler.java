@@ -5,10 +5,11 @@ import net.md_5.bungee.event.EventHandler;
 import net.md_5.bungee.api.plugin.Listener;
 import net.md_5.bungee.api.event.PostLoginEvent;
 import net.md_5.bungee.api.event.ServerConnectedEvent;
-import io.greitan.avion.bungeecord.GeyserVoice;
-import io.greitan.avion.bungeecord.utils.Language;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.ChatColor;
+
+import io.greitan.avion.bungeecord.GeyserVoice;
+import io.greitan.avion.bungeecord.utils.Language;
 
 import java.util.Objects;
 
@@ -43,19 +44,16 @@ public class PlayerJoinHandler implements Listener {
     }
 
     private void handleAutoBind(int playerBindKey, ProxiedPlayer player) {
+        player.sendMessage(
+            new ComponentBuilder(Language.getMessage(lang, "plugin-autobind-enabled")).color(ChatColor.GREEN)
+            .append(new ComponentBuilder(" ").create())
+            .append(
+                new ComponentBuilder(Language.getMessage(lang, "plugin-autobind-binding")).color(ChatColor.YELLOW).create()
+            ).create());
+
         boolean isBound = plugin.bind(playerBindKey, player);
 
-        if (isBound) {
-            String playerName = player.getName();
-            String connectMessage = Language.getMessage(lang, "player-connect").replace("$player", playerName);
-
-            plugin.Logger.info(connectMessage);
-
-            boolean sendConnectMessage = GeyserVoice.getConfig().getBoolean("config.voice.send-connect-message");
-            if (sendConnectMessage) {
-                plugin.getProxy().broadcast(new ComponentBuilder(connectMessage).color(ChatColor.YELLOW).create());
-            }
-        } else {
+        if (!isBound) {
             player.sendMessage(new ComponentBuilder(Language.getMessage(lang, "plugin-autobind-failed"))
                     .color(ChatColor.RED).create());
         }

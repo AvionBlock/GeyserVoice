@@ -89,7 +89,7 @@ jobs:
             loaders: paper, spigot, bukkit, purpur, velocity, bungeecord
             game_versions: 1.20.2:1.21.4
             version_number: ${{ github.event.inputs.tag }}
-            featured: github.event.inputs.status == 'stable'
+            featured: ${{ github.event.inputs.status == 'stable' }}
             version_type: ${{ github.event.inputs.status == 'stable' && 'release' || 'beta' }}
             files: |
                 ./build/libs/GeyserVoice-*.jar

@@ -1,8 +1,0 @@
-{
-  "id": "geyservoice",
-  "name": "${project.artifactId}",
-  "version": "${project.version}",
-  "description": "",
-  "authors": ["Alpha"],
-  "main": "io.greitan.avion.velocity.GeyserVoice"
-}

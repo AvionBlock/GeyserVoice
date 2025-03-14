@@ -237,3 +237,5 @@ nbdist/
 
 ### Gradle ###
 .gradle
+# Ignore Gradle build output directory
+build

@@ -20,6 +20,7 @@ public class Language {
             plugin.saveResource("locale/en.yml");
             plugin.saveResource("locale/ru.yml");
             plugin.saveResource("locale/nl.yml");
+            plugin.saveResource("locale/ja.yml");
         }
 
         loadLanguages(languageFolder.getAbsolutePath());

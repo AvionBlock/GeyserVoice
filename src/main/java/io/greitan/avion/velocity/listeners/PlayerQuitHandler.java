@@ -47,6 +47,7 @@ public class PlayerQuitHandler {
             }
         } else {
             plugin.Logger.error(Language.getMessage(lang, "player-disconnect-failed").replace("$player", playerName));
+            plugin.getPlayerBinds().remove(playerName);
         }
     }
 }

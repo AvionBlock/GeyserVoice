@@ -53,6 +53,7 @@ public class PlayerQuitHandler implements Listener {
             }
         } else {
             plugin.Logger.error(Language.getMessage(lang, "player-disconnect-failed").replace("$player", playerName));
+            plugin.getPlayerBinds().remove(playerName);
         }
     }
 }

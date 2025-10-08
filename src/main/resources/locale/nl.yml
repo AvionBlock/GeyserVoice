@@ -59,8 +59,8 @@ messages:
   plugin-connection-already-disconnected: "Verbinding was al verbroken met server." # Message when already disconnected
   plugin-connection-disconnect: "Verbinding met VOIP Server verbroken, Reden: $reason" # Message when disconnect
 
-  plugin-autobind-enabled: "Autobinding Enabled." 
-  plugin-autobind-binding: "Binding to key: $key!"
+  plugin-autobind-enabled: "Autobinden Ingeschakeld." # Message indicating we'll try autobind
+  plugin-autobind-binding: "Binden met sleutel: $key!" # Message indicating that we're autobinding
   plugin-autobind-success: "AutoBind succes!"  # Successful AutoBind execution.
   plugin-autobind-failed: "AutoBind mislukt! Zit je niet in de VoiceCraft app?"  # Error message during failed AutoBind execution.
 

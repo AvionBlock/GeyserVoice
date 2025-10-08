@@ -60,6 +60,8 @@ messages:
   plugin-connection-already-disconnected: "Already disconnected from server." # Message when already disconnected
   plugin-connection-disconnect: "Disconnected from VOIP Server, Reason: $reason" # Message when disconnect
 
+  plugin-autobind-enabled: "Autobinding Enabled." # Message indicating we'll try autobind
+  plugin-autobind-binding: "Binding to key: $key!" # Message indicating that we're autobinding
   plugin-autobind-success: "AutoBind success!"  # Successful AutoBind execution.
   plugin-autobind-failed: "AutoBind failed! Are you not in the VoiceCraft app?"  # Error message during failed AutoBind execution.
 

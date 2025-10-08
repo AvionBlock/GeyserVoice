@@ -60,6 +60,8 @@ messages:
   plugin-connection-already-disconnected: "Вы уже отключены от сервера."  
   plugin-connection-disconnect: "Отключено от VOIP-сервера, причина: $reason"  
 
+  plugin-autobind-enabled: "Автопривязка включена."
+  plugin-autobind-binding: "Привязка к ключу: $key!"
   plugin-autobind-success: "Автопривязка выполнена успешно!"  
   plugin-autobind-failed: "Ошибка автопривязки! Вы не находитесь в приложении VoiceCraft?"  
 

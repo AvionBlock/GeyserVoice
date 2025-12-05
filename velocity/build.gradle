@@ -1,0 +1,14 @@
+plugins {
+    id 'io.github.goooler.shadow'
+}
+
+dependencies {
+    implementation project(':common')
+    compileOnly "com.velocitypowered:velocity-api:${project.velocity_version}"
+    annotationProcessor "com.velocitypowered:velocity-api:${project.velocity_version}"
+}
+
+shadowJar {
+    archiveClassifier.set('')
+    relocate 'io.greitan.avion.common', 'io.greitan.avion.velocity.common'
+}

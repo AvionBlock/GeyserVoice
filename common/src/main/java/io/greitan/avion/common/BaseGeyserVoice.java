@@ -1,22 +1,20 @@
 package io.greitan.avion.common;
 
-// import lombok.Getter;
 import java.util.Map;
-import java.util.HashMap;
 
 public interface BaseGeyserVoice {
-    public boolean isConnected = false;
-    public String host = "";
-    public int port = 0;
-    public String serverKey = "";
-    public Map<String, Boolean> playerBinds = new HashMap<>();
-    public String token = "";
-    public String lang = "";
+    boolean isConnected();
+    String getHost();
+    int getPort();
+    String getServerKey();
+    Map<String, Boolean> getPlayerBinds();
+    String getToken();
+    String getLang();
 
     /**
      * Reloads the plugin configuration and initializes connections.
      */
-    abstract public void reload();
+    void reload();
 
     /**
      * Connects to a new server.
@@ -26,7 +24,7 @@ public interface BaseGeyserVoice {
      * @param serverKey The server key.
      * @return True if connected successfully, otherwise false.
      */
-    abstract public Boolean connect(String host, int port, String serverKey);
+    Boolean connect(String host, int port, String serverKey);
 
     /**
      * Reconnects to the server.
@@ -34,19 +32,19 @@ public interface BaseGeyserVoice {
      * @param force Indicates whether to force a connection.
      * @return True if connected successfully, otherwise false.
      */
-    abstract public Boolean reconnect(Boolean force);
+    Boolean reconnect(Boolean force);
     
     /**
      * Disconnects from the server.
      *
      * @param reason The reason why we disconnected
      */
-    abstract public void disconnect(String reason);
+    void disconnect(String reason);
     
     /**
      * Disconnects from the server.
      */
-    abstract public void disconnect();
+    void disconnect();
 
     /**
      * Bind a fake player
@@ -55,7 +53,7 @@ public interface BaseGeyserVoice {
      * @param tries
      * @return
      */
-    abstract public Boolean bindFake(int bindKey, String name, int tries);
+    Boolean bindFake(int bindKey, String name, int tries);
     
     /**
      * Bind a fake player
@@ -63,7 +61,7 @@ public interface BaseGeyserVoice {
      * @param name
      * @return
      */
-    abstract public Boolean bindFake(int bindKey, String name);
+    Boolean bindFake(int bindKey, String name);
 
     /**
      * Updates the voice chat settings.
@@ -73,15 +71,15 @@ public interface BaseGeyserVoice {
      * @param voiceEffects      Voice effects setting.
      * @return True if settings were updated successfully, otherwise false.
      */
-    abstract public Boolean updateSettings(int proximityDistance, Boolean proximityToggle, Boolean voiceEffects);
+    Boolean updateSettings(int proximityDistance, Boolean proximityToggle, Boolean voiceEffects);
 
     /**
      * Allows the TaskRunner to set the connected state to false
      */
-    abstract public void setNotConnected();
+    void setNotConnected();
 
-    abstract public void saveResource(String resourcePath);
+    void saveResource(String resourcePath);
 
-    abstract public void saveConfig();
-    abstract public void reloadConfig();
+    void saveConfig();
+    void reloadConfig();
 }

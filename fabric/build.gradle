@@ -1,0 +1,34 @@
+plugins {
+    id 'fabric-loom'
+    id 'io.github.goooler.shadow'
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}"
+    modImplementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    
+    implementation project(':common')
+    shadow(project(':common'))
+}
+
+shadowJar {
+    configurations = [project.configurations.shadow]
+    archiveClassifier.set('dev-shadow')
+    relocate 'io.greitan.avion.common', 'io.greitan.avion.fabric.common'
+}
+
+remapJar {
+    inputFile.set(shadowJar.archiveFile)
+    archiveClassifier.set('')
+    dependsOn shadowJar
+}
+
+processResources {
+    inputs.property "version", project.version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": project.version
+    }
+}

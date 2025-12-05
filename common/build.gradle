@@ -1,0 +1,12 @@
+plugins {
+    id 'io.github.goooler.shadow'
+}
+
+dependencies {
+    implementation("com.fasterxml.jackson.core:jackson-databind:${project.jackson_version}")
+    implementation("com.github.simplix-softworks:simplixstorage:${project.simplix_version}")
+}
+
+shadowJar {
+    archiveClassifier.set("common")
+}

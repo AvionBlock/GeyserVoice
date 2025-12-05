@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "geyservoice",
+  "version": "${version}",
+  "name": "GeyserVoice",
+  "description": "Plugin that adds support for using VoiceCraft on Java servers.",
+  "authors": [
+    "Alpha"
+  ],
+  "contact": {
+    "homepage": "https://uninode.de",
+    "sources": "https://github.com/AvionBlock/GeyserVoice"
+  },
+  "license": "MIT",
+  "icon": "assets/geyservoice/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "io.greitan.avion.fabric.FabricGeyserVoice"
+    ]
+  },
+  "mixins": [
+  ],
+  "depends": {
+    "fabricloader": ">=0.18.1",
+    "fabric": "*",
+    "minecraft": ">=1.21",
+    "java": ">=21"
+  }
+}

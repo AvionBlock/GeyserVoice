@@ -4,12 +4,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import io.greitan.avion.paper.GeyserVoice;
 import io.greitan.avion.paper.utils.Language;
-import io.greitan.avion.common.network.Payloads.PacketType;
-import io.greitan.avion.common.network.Payloads.LocationData;
-import io.greitan.avion.common.network.Payloads.PlayerData;
-import io.greitan.avion.common.network.Payloads.MCCommPacket;
-import io.greitan.avion.common.network.Payloads.UpdatePacket;
-import io.greitan.avion.common.network.Payloads.DenyPacket;
+import io.greitan.avion.common.network.Payloads.*;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -31,7 +26,7 @@ public class PositionsTask extends BukkitRunnable {
     private final GeyserVoice plugin;
     private final String lang;
     private boolean isConnected = false;
-    private Integer ReconnectRetries = 0;
+    private int reconnectRetries = 0;
 
     public PositionsTask(GeyserVoice plugin, String lang) {
         this.plugin = plugin;
@@ -41,9 +36,7 @@ public class PositionsTask extends BukkitRunnable {
     @Override
     public void run() {
         if (plugin.usesProxy) {
-            isConnected = true; // Only local variable... Needed for CaveEchoFactor
-            // plugin.getMessageHandler().sendPlayerDataList(plugin.getServer(),
-            // getPlayerDataList());
+            isConnected = true;
             for (Player player : plugin.getServer().getOnlinePlayers()) {
                 plugin.getMessageHandler().sendPlayerData(player, getPlayerData(player));
             }
@@ -58,23 +51,17 @@ public class PositionsTask extends BukkitRunnable {
 
         if (isConnected) {
             if (host != null && token != null) {
-                UpdatePacket updatePacket = new UpdatePacket();
-                updatePacket.Token = token;
-                updatePacket.Players = getPlayerDataList();
+                UpdatePacket updatePacket = new UpdatePacket(0, token, getPlayerDataList()); // ID 0 is placeholder, record handles it
 
                 MCCommPacket response = plugin.network.sendPostRequest(link, updatePacket);
                 if (response != null) {
-                    if (response.PacketId == PacketType.AckUpdate.ordinal()) {
-                        // AckUpdatePacket packetData = plugin.objectMapper.convertValue(response,
-                        // AckUpdatePacket.class);
-                        // You can do stuff with the AckUpdate packet data here...
+                    if (response.packetId() == PacketType.AckUpdate.ordinal()) {
                         return;
-                    } else if (response.PacketId == PacketType.Deny.ordinal()) {
+                    } else if (response.packetId() == PacketType.Deny.ordinal() || response instanceof DenyPacket) {
                         DenyPacket packetData = GeyserVoice.objectMapper.convertValue(response, DenyPacket.class);
-                        plugin.Logger.error(packetData.Reason);
-                        if (!packetData.Reason.equals("Invalid Token!")) {
+                        plugin.Logger.error(packetData.reason());
+                        if (!packetData.reason().equals("Invalid Token!")) {
                             plugin.setNotConnected();
-                            // http.cancelAll(packetData.Reason);
                             cancel();
                             return;
                         }
@@ -82,8 +69,8 @@ public class PositionsTask extends BukkitRunnable {
                         return;
                     }
                 }
-                if (!isConnected)
-                    return; // do nothing.
+                
+                if (!isConnected) return;
 
                 plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-lost"));
                 plugin.setNotConnected();
@@ -93,8 +80,8 @@ public class PositionsTask extends BukkitRunnable {
                         Bukkit.broadcast(Component.text(Language.getMessage(lang, "plugin-connection-lost-reconnect"))
                                 .color(NamedTextColor.RED));
                     }
-                    ReconnectRetries = 0;
-                    Reconnect();
+                    reconnectRetries = 0;
+                    reconnect();
                     return;
                 }
                 if (plugin.getConfig().getBoolean("config.voice.send-connection-lost-message")) {
@@ -108,37 +95,35 @@ public class PositionsTask extends BukkitRunnable {
 
     public List<PlayerData> getPlayerDataList() {
         List<PlayerData> playerDataList = new ArrayList<>();
-
         for (Player player : Bukkit.getServer().getOnlinePlayers()) {
-            PlayerData playerData = getPlayerData(player);
-            playerDataList.add(playerData);
+            playerDataList.add(getPlayerData(player));
         }
-
         return playerDataList;
     }
 
     public PlayerData getPlayerData(Player player) {
         Location headLocation = player.getEyeLocation();
 
-        LocationData locationData = new LocationData();
-        locationData.x = headLocation.getX();
-        locationData.y = headLocation.getY();
-        locationData.z = headLocation.getZ();
+        LocationData locationData = new LocationData(
+            headLocation.getX(),
+            headLocation.getY(),
+            headLocation.getZ()
+        );
 
-        PlayerData playerData = new PlayerData();
-        playerData.PlayerId = player.getUniqueId().toString();
-        playerData.DimensionId = getDimensionId(player);
-        playerData.Location = locationData;
-        playerData.Rotation = player.getLocation().getYaw();
-
+        double echoFactor = 0.0;
         if (player.getWorld().getEnvironment() == World.Environment.NORMAL) {
-            playerData.EchoFactor = getCaveDensity(player);
-        } else {
-            playerData.EchoFactor = 0.0;
+            echoFactor = getCaveDensity(player);
         }
-        playerData.Muffled = player.isInWater();
-        playerData.IsDead = player.isDead();
-        return playerData;
+
+        return new PlayerData(
+            player.getUniqueId().toString(),
+            getDimensionId(player),
+            locationData,
+            player.getLocation().getYaw(),
+            echoFactor,
+            player.isInWater(),
+            player.isDead()
+        );
     }
 
     public double getCaveDensity(Player player) {
@@ -147,19 +132,14 @@ public class PositionsTask extends BukkitRunnable {
         }
 
         String[] caveBlocks = {
-                "STONE",
-                "DIORITE",
-                "GRANITE",
-                "DEEPSLATE",
-                "TUFF"
+                "STONE", "DIORITE", "GRANITE", "DEEPSLATE", "TUFF"
         };
 
         int blockCount = 0;
         for (int x = -1; x <= 1; x++) {
             for (int y = -1; y <= 1; y++) {
                 for (int z = -1; z <= 1; z++) {
-                    if (x == 0 && y == 0 && z == 0)
-                        continue; // a vector of 0,0,0 won't go anywhere, so skip it...
+                    if (x == 0 && y == 0 && z == 0) continue;
                     Vector direction = new Vector(x, y, z);
                     blockCount += castRayUntilBlock(
                             new BlockIterator(player.getWorld(), player.getLocation().toVector(), direction, 0, 50),
@@ -168,8 +148,7 @@ public class PositionsTask extends BukkitRunnable {
             }
         }
 
-        // (3 * 3 * 3) - 1 = 26.0
-        return blockCount / 26.0; // Total blocks checked
+        return blockCount / 26.0;
     }
 
     private int castRayUntilBlock(BlockIterator blockIterator, String[] caveBlocks) {
@@ -190,8 +169,7 @@ public class PositionsTask extends BukkitRunnable {
     }
 
     private String getDimensionId(Player player) {
-        String worldName = player.getWorld().getName();
-        return switch (worldName) {
+        return switch (player.getWorld().getName()) {
             case "world" -> "minecraft:overworld";
             case "world_nether" -> "minecraft:nether";
             case "world_the_end" -> "minecraft:the_end";
@@ -199,12 +177,12 @@ public class PositionsTask extends BukkitRunnable {
         };
     }
 
-    private Boolean Reconnect() {
-        if (ReconnectRetries < 5) {
-            ReconnectRetries++;
+    private boolean reconnect() {
+        if (reconnectRetries < 5) {
+            reconnectRetries++;
 
             plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-reconnecting-attempt").replace("$attempt",
-                    ReconnectRetries.toString()));
+                    String.valueOf(reconnectRetries)));
 
             if (plugin.reconnect(true)) {
                 plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-reconnecting-success"));
@@ -215,13 +193,14 @@ public class PositionsTask extends BukkitRunnable {
                 }
                 return true;
             } else {
-                if (ReconnectRetries < 5) {
+                if (reconnectRetries < 5) {
                     plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-reconnecting-failed-retry"));
                     try {
                         TimeUnit.SECONDS.sleep(1);
-                    } catch (Exception e) {
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
                     }
-                    return Reconnect();
+                    return reconnect();
                 }
                 plugin.Logger.error(Language.getMessage(lang, "plugin-connection-reconnecting-failed"));
 

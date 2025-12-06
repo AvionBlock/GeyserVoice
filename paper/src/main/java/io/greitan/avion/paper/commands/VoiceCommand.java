@@ -51,10 +51,10 @@ public class VoiceCommand implements CommandExecutor, TabCompleter {
                 @Override
                 public void execute(String text, String rawColor) {
                     NamedTextColor color = NamedTextColor.RED;
-                    if (rawColor == "red") color = NamedTextColor.RED;
-                    else if (rawColor == "aqua") color = NamedTextColor.AQUA;
-                    else if (rawColor == "green") color = NamedTextColor.GREEN;
-                    else if (rawColor == "yellow") color = NamedTextColor.YELLOW;
+                    if ("red".equals(rawColor)) color = NamedTextColor.RED;
+                    else if ("aqua".equals(rawColor)) color = NamedTextColor.AQUA;
+                    else if ("green".equals(rawColor)) color = NamedTextColor.GREEN;
+                    else if ("yellow".equals(rawColor)) color = NamedTextColor.YELLOW;
 
                     var message = Component.text(Language.getMessage(lang, text)).color(color);
                     if (sender instanceof Player)

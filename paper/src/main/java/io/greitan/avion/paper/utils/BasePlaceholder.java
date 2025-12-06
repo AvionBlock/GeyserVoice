@@ -1,4 +1,4 @@
-package io.greitan.avion.common.utils;
+package io.greitan.avion.paper.utils;
 
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 

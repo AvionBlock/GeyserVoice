@@ -27,6 +27,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.FileOutputStream;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Objects;
 import java.util.Map;
 import java.util.HashMap;
@@ -41,9 +42,9 @@ public class GeyserVoice extends Plugin implements BaseGeyserVoice {
     private @Getter String serverKey = "";
     private @Getter Map<String, Boolean> playerBinds = new HashMap<>();
     private @Getter String token = "";
-    private String lang;
+    private @Getter String lang;
     private @Getter PluginMessageHandler messageHandler = new PluginMessageHandler(this);
-    public Map<String, PlayerData> playerDataList = new HashMap<>();
+    public Map<String, PlayerData> playerDataList = new ConcurrentHashMap<>();
 
     private @Getter ScheduledTask taskRunner;
 
@@ -226,7 +227,7 @@ public class GeyserVoice extends Plugin implements BaseGeyserVoice {
                 player.getName());
         playerBinds.put(player.getName(), false);
         if (result != null) {
-            if (result == "SUCCESS") {
+            if ("SUCCESS".equals(result)) {
                 playerBinds.put(player.getName(), true);
                 messageHandler.sendPlayerBindSync(player);
 
@@ -247,7 +248,7 @@ public class GeyserVoice extends Plugin implements BaseGeyserVoice {
                     );
                 }
                 return true;
-            } else if (result == "Invalid Token!" && tries == 0) {
+            } else if ("Invalid Token!".equals(result) && tries == 0) {
                 Logger.info("Invalid Token detected, reconnecting...");
                 isConnected = reconnect(true);
                 return bind(playerKey, player, 1);
@@ -277,10 +278,10 @@ public class GeyserVoice extends Plugin implements BaseGeyserVoice {
             
         String link = "http://" + host + ":" + port;
 
-        String result = network.sendBindRequest(link, token, playerKey, String.format("%0", playerKey), name);
+        String result = network.sendBindRequest(link, token, playerKey, String.valueOf(playerKey), name);
         playerBinds.put(name, false);
         if (result != null) {
-            if (result == "SUCCESS") {
+            if ("SUCCESS".equals(result)) {
                 playerBinds.put(name, true);
                 // messageHandler.sendPlayerBindSync(player);
 
@@ -301,7 +302,7 @@ public class GeyserVoice extends Plugin implements BaseGeyserVoice {
                     );
                 }
                 return true;
-            } else if (result == "Invalid Token!" && tries == 0) {
+            } else if ("Invalid Token!".equals(result) && tries == 0) {
                 Logger.info("Invalid Token detected, reconnecting...");
                 isConnected = reconnect(true);
                 return bindFake(playerKey, name, 1);
@@ -328,11 +329,11 @@ public class GeyserVoice extends Plugin implements BaseGeyserVoice {
 
         String result = network.sendDisconnectRequest(link, token, player.getUniqueId().toString(), player.getName());
         if (result != null) {
-            if (result == "SUCCESS") {
+            if ("SUCCESS".equals(result)) {
                 playerBinds.remove(player.getName());
                 messageHandler.sendPlayerBindSync(player);
                 return true;
-            } else if (result == "Invalid Token!" && tries == 0) {
+            } else if ("Invalid Token!".equals(result) && tries == 0) {
                 Logger.info("Invalid Token detected, reconnecting...");
                 isConnected = reconnect(true);
                 return disconnectPlayer(player, 1);

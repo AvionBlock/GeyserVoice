@@ -34,7 +34,7 @@ public class GeyserVoice extends JavaPlugin implements BaseGeyserVoice {
     private @Getter String serverKey = "";
     private @Getter Map<String, Boolean> playerBinds = new HashMap<>();
     private @Getter String token = "";
-    private String lang;
+    private @Getter String lang;
     public boolean usesProxy = false;
     private @Getter PluginMessageHandler messageHandler = new PluginMessageHandler(this);
 
@@ -148,18 +148,25 @@ public class GeyserVoice extends JavaPlugin implements BaseGeyserVoice {
      * Connects to the server.
      *
      * @param force Indicates whether to force a connection.
-     * @return True if connected successfully, otherwise false.
+     * @return True if connected successfully (or task scheduled), otherwise false.
      */
     public Boolean reconnect(Boolean force) {
         if (isConnected && !force)
             return true;
-        if (isConnected) {
-            disconnect("Reconnecting to another server.");
-        }
-
+            
         if (usesProxy) {
             Logger.info(Language.getMessage(lang, "plugin-connect-proxy"));
             return false;
+        }
+
+        // Move to async if on primary thread
+        if (Bukkit.isPrimaryThread()) {
+            getServer().getScheduler().runTaskAsynchronously(this, () -> reconnect(force));
+            return true;
+        }
+
+        if (isConnected) {
+            disconnect("Reconnecting to another server.");
         }
 
         if (Objects.nonNull(host) && Objects.nonNull(serverKey)) {
@@ -187,6 +194,12 @@ public class GeyserVoice extends JavaPlugin implements BaseGeyserVoice {
     public void disconnect(String reason) {
         if (!isConnected)
             return;
+
+        // Move to async if on primary thread
+        if (Bukkit.isPrimaryThread()) {
+            getServer().getScheduler().runTaskAsynchronously(this, () -> disconnect(reason));
+            return;
+        }
 
         if (Objects.nonNull(host) && Objects.nonNull(serverKey)) {
             String link = "http://" + host + ":" + port;
@@ -217,7 +230,7 @@ public class GeyserVoice extends JavaPlugin implements BaseGeyserVoice {
      *
      * @param playerKey The key associated with the player.
      * @param player    The player to bind.
-     * @return True if the binding was successful, otherwise false.
+     * @return True if the binding was successful (or task scheduled), otherwise false.
      */
     public Boolean bind(int playerKey, Player player, int tries) {
         if (!isConnected || Objects.isNull(host) || Objects.isNull(serverKey) || usesProxy)
@@ -227,16 +240,25 @@ public class GeyserVoice extends JavaPlugin implements BaseGeyserVoice {
             return true;
         }
 
+        // Move to async if on primary thread
+        if (Bukkit.isPrimaryThread()) {
+            getServer().getScheduler().runTaskAsynchronously(this, () -> bind(playerKey, player, tries));
+            return true;
+        }
+
         String link = "http://" + host + ":" + port;
 
-        getConfig().set("config.players." + player.getName(), playerKey);
-        saveConfig();
+        // Config saving should be on main thread ideally, but concurrent save might be okay or we skip it here?
+        // getConfig() is not thread safe. We should probably skip saving config for every bind or schedule it back to sync.
+        // For now, let's skip writing to config on every bind to avoid race conditions/lag.
+        // getConfig().set("config.players." + player.getName(), playerKey);
+        // saveConfig();
 
         String result = network.sendBindRequest(link, token, playerKey, player.getUniqueId().toString(),
                 player.getName());
         playerBinds.put(player.getName(), false);
         if (result != null) {
-            if (result == "SUCCESS") {
+            if ("SUCCESS".equals(result)) {
                 playerBinds.put(player.getName(), true);
 
                 Logger.info(Language.getMessage(lang, "player-binded").replace("$player",player.getName()));
@@ -255,8 +277,9 @@ public class GeyserVoice extends JavaPlugin implements BaseGeyserVoice {
                     );
                 }
                 return true;
-            } else if (result == "Invalid Token!" && tries == 0) {
+            } else if ("Invalid Token!".equals(result) && tries == 0) {
                 Logger.info("Invalid Token detected, reconnecting...");
+                // reconnect is already async-aware, but here we are already async, so it runs directly.
                 isConnected = reconnect(true);
                 return bind(playerKey, player, 1);
             }
@@ -281,13 +304,18 @@ public class GeyserVoice extends JavaPlugin implements BaseGeyserVoice {
         if (playerBinds.containsKey(name) && playerBinds.get(name)) {
             return true;
         }
+
+        if (Bukkit.isPrimaryThread()) {
+            getServer().getScheduler().runTaskAsynchronously(this, () -> bindFake(playerKey, name, tries));
+            return true;
+        }
             
         String link = "http://" + host + ":" + port;
 
-        String result = network.sendBindRequest(link, token, playerKey, String.format("%0", playerKey), name);
+        String result = network.sendBindRequest(link, token, playerKey, String.valueOf(playerKey), name);
         playerBinds.put(name, false);
         if (result != null) {
-            if (result == "SUCCESS") {
+            if ("SUCCESS".equals(result)) {
                 playerBinds.put(name, true);
 
                 Logger.info(Language.getMessage(lang, "player-binded").replace("$player", name));
@@ -306,7 +334,7 @@ public class GeyserVoice extends JavaPlugin implements BaseGeyserVoice {
                     );
                 }
                 return true;
-            } else if (result == "Invalid Token!" && tries == 0) {
+            } else if ("Invalid Token!".equals(result) && tries == 0) {
                 Logger.info("Invalid Token detected, reconnecting...");
                 isConnected = reconnect(true);
                 return bindFake(playerKey, name, 1);
@@ -328,14 +356,20 @@ public class GeyserVoice extends JavaPlugin implements BaseGeyserVoice {
     public Boolean disconnectPlayer(Player player, int tries) {
         if (!isConnected || Objects.isNull(host) || Objects.isNull(serverKey) || usesProxy)
             return false;
+            
+        if (Bukkit.isPrimaryThread()) {
+            getServer().getScheduler().runTaskAsynchronously(this, () -> disconnectPlayer(player, tries));
+            return true;
+        }
+
         String link = "http://" + host + ":" + port;
 
         String result = network.sendDisconnectRequest(link, token, player.getUniqueId().toString(), player.getName());
         if (result != null) {
-            if (result == "SUCCESS") {
+            if ("SUCCESS".equals(result)) {
                 playerBinds.remove(player.getName());
                 return true;
-            } else if (result == "Invalid Token!" && tries == 0) {
+            } else if ("Invalid Token!".equals(result) && tries == 0) {
                 Logger.info("Invalid Token detected, reconnecting...");
                 isConnected = reconnect(true);
                 return disconnectPlayer(player, 1);

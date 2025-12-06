@@ -1,13 +1,12 @@
 plugins {
     id 'java'
-    id 'io.github.goooler.shadow' version '8.1.8' apply false
+    id 'com.gradleup.shadow' version '8.3.5' apply false
     id 'net.kyori.blossom' version '2.1.0' apply false
-    id 'fabric-loom' version '1.7-SNAPSHOT' apply false
+    id 'fabric-loom' version '1.14-SNAPSHOT' apply false
 }
 
 subprojects {
     apply plugin: 'java'
-    apply plugin: 'net.kyori.blossom'
 
     group = project.project_group
     version = project.project_version
@@ -37,12 +36,18 @@ subprojects {
     }
 
     dependencies {
-        compileOnly "org.projectlombok:lombok:${project.lombok_version}"
-        annotationProcessor "org.projectlombok:lombok:${project.lombok_version}"
+    }
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
     }
 
     tasks.withType(JavaCompile).configureEach {
         options.encoding = 'UTF-8'
         options.release.set(21)
+        options.fork = true
+        options.compilerArgs.add("-XDstringConcat=inline")
     }
 }

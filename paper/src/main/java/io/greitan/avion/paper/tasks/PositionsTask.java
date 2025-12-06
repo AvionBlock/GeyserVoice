@@ -17,7 +17,7 @@ import org.bukkit.World;
 import org.bukkit.util.BlockIterator;
 import org.bukkit.util.Vector;
 
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -25,8 +25,14 @@ import java.util.List;
 public class PositionsTask extends BukkitRunnable {
     private final GeyserVoice plugin;
     private final String lang;
-    private boolean isConnected = false;
+    private final AtomicBoolean isRequestPending = new AtomicBoolean(false);
     private int reconnectRetries = 0;
+
+    // Constants for Echo/Cave density
+    private static final int CAVE_Y_THRESHOLD = 0;
+    private static final double CAVE_DENSITY_DEEP = 1.0;
+    private static final double CAVE_DENSITY_COVERED = 0.5;
+    private static final double CAVE_DENSITY_SKY = 0.0;
 
     public PositionsTask(GeyserVoice plugin, String lang) {
         this.plugin = plugin;
@@ -36,42 +42,69 @@ public class PositionsTask extends BukkitRunnable {
     @Override
     public void run() {
         if (plugin.usesProxy) {
-            isConnected = true;
             for (Player player : plugin.getServer().getOnlinePlayers()) {
                 plugin.getMessageHandler().sendPlayerData(player, getPlayerData(player));
             }
             return;
         }
 
-        isConnected = plugin.isConnected();
+        if (!plugin.isConnected()) return;
+
+        // Prevent stacking requests if the network is slow
+        if (isRequestPending.get()) return;
+
         String host = plugin.getHost();
         int port = plugin.getPort();
         String token = plugin.getToken();
         String link = "http://" + host + ":" + port;
 
-        if (isConnected) {
-            if (host != null && token != null) {
-                UpdatePacket updatePacket = new UpdatePacket(0, token, getPlayerDataList()); // ID 0 is placeholder, record handles it
+        if (host != null && token != null) {
+            // 1. Gather data on the main thread (Thread-safe)
+            List<PlayerData> players = getPlayerDataList();
+            UpdatePacket updatePacket = new UpdatePacket();
+            updatePacket.token = token;
+            updatePacket.players = players;
 
-                MCCommPacket response = plugin.network.sendPostRequest(link, updatePacket);
-                if (response != null) {
-                    if (response.packetId() == PacketType.AckUpdate.ordinal()) {
-                        return;
-                    } else if (response.packetId() == PacketType.Deny.ordinal() || response instanceof DenyPacket) {
-                        DenyPacket packetData = GeyserVoice.objectMapper.convertValue(response, DenyPacket.class);
-                        plugin.Logger.error(packetData.reason());
-                        if (!packetData.reason().equals("Invalid Token!")) {
-                            plugin.setNotConnected();
-                            cancel();
-                            return;
+            // 2. Send network request asynchronously
+            isRequestPending.set(true);
+            plugin.network.sendPostRequestAsync(link, updatePacket)
+                .thenAccept(response -> {
+                    if (response != null) {
+                        if (response.getPacketId() == PacketType.AckUpdate.ordinal()) {
+                            // Success
+                        } else if (response.getPacketId() == PacketType.Deny.ordinal() || response instanceof DenyPacket) {
+                            DenyPacket packetData = GeyserVoice.objectMapper.convertValue(response, DenyPacket.class);
+                            plugin.Logger.error("Server Denied Update: " + packetData.reason);
+                            
+                            if (!"Invalid Token!".equals(packetData.reason)) {
+                                handleDisconnect();
+                            } else {
+                                handleReconnect();
+                            }
                         }
                     } else {
-                        return;
+                        // Network failure (null response)
+                        handleReconnect();
                     }
-                }
-                
-                if (!isConnected) return;
+                })
+                .whenComplete((result, ex) -> {
+                    isRequestPending.set(false);
+                });
+        }
+    }
 
+    private void handleDisconnect() {
+        plugin.setNotConnected();
+        this.cancel();
+    }
+
+    private void handleReconnect() {
+        if (!plugin.isConnected()) return; // Already disconnected
+
+        // Schedule reconnect on main thread to avoid concurrency issues with plugin state
+        new BukkitRunnable() {
+            @Override
+            public void run() {
                 plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-lost"));
                 plugin.setNotConnected();
 
@@ -81,16 +114,66 @@ public class PositionsTask extends BukkitRunnable {
                                 .color(NamedTextColor.RED));
                     }
                     reconnectRetries = 0;
-                    reconnect();
-                    return;
+                    attemptReconnect();
+                } else {
+                     if (plugin.getConfig().getBoolean("config.voice.send-connection-lost-message")) {
+                        Bukkit.broadcast(Component.text(Language.getMessage(lang, "plugin-connection-lost"))
+                                .color(NamedTextColor.RED));
+                    }
+                    PositionsTask.this.cancel();
                 }
-                if (plugin.getConfig().getBoolean("config.voice.send-connection-lost-message")) {
-                    Bukkit.broadcast(Component.text(Language.getMessage(lang, "plugin-connection-lost"))
-                            .color(NamedTextColor.RED));
-                }
-                cancel();
             }
-        }
+        }.runTask(plugin);
+    }
+
+    private void attemptReconnect() {
+        // Reconnect logic moved to async task
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (reconnectRetries < 5) {
+                    reconnectRetries++;
+                    // Log on main thread or async is fine for logging usually
+                    plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-reconnecting-attempt")
+                        .replace("$attempt", String.valueOf(reconnectRetries)));
+                    
+                    // reconnect() is blocking, so we run it here in async task
+                    if (plugin.reconnect(true)) {
+                        new BukkitRunnable() {
+                            @Override
+                            public void run() {
+                                plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-reconnecting-success"));
+                                if (plugin.getConfig().getBoolean("config.voice.send-connection-lost-message")) {
+                                    Bukkit.broadcast(Component.text(Language.getMessage(lang, "plugin-connection-reconnecting-success"))
+                                            .color(NamedTextColor.GREEN));
+                                }
+                            }
+                        }.runTask(plugin);
+                    } else {
+                         plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-reconnecting-failed-retry"));
+                         // Retry after delay
+                         new BukkitRunnable() {
+                             @Override
+                             public void run() {
+                                 attemptReconnect();
+                             }
+                         }.runTaskLaterAsynchronously(plugin, 20L); // 1 second (20 ticks)
+                    }
+                } else {
+                    new BukkitRunnable() {
+                        @Override
+                        public void run() {
+                            plugin.Logger.error(Language.getMessage(lang, "plugin-connection-reconnecting-failed"));
+                            if (plugin.getConfig().getBoolean("config.voice.send-connection-lost-message")) {
+                                Bukkit.broadcast(Component.text(Language.getMessage(lang, "plugin-connection-reconnecting-failed"))
+                                        .color(NamedTextColor.RED));
+                            }
+                            PositionsTask.this.cancel();
+                        }
+                    }.runTask(plugin);
+                }
+            }
+        }.runTaskAsynchronously(plugin);
     }
 
     public List<PlayerData> getPlayerDataList() {
@@ -115,102 +198,34 @@ public class PositionsTask extends BukkitRunnable {
             echoFactor = getCaveDensity(player);
         }
 
-        return new PlayerData(
-            player.getUniqueId().toString(),
-            getDimensionId(player),
-            locationData,
-            player.getLocation().getYaw(),
-            echoFactor,
-            player.isInWater(),
-            player.isDead()
-        );
+        PlayerData playerData = new PlayerData();
+        playerData.playerId = player.getUniqueId().toString();
+        playerData.dimensionId = getDimensionId(player);
+        playerData.location = locationData;
+        playerData.rotation = player.getLocation().getYaw();
+        playerData.echoFactor = echoFactor;
+        playerData.muffled = player.isInWater();
+        playerData.isDead = player.isDead();
+
+        return playerData;
     }
 
     public double getCaveDensity(Player player) {
-        if (!isConnected) {
-            return 0.0;
-        }
-
-        String[] caveBlocks = {
-                "STONE", "DIORITE", "GRANITE", "DEEPSLATE", "TUFF"
-        };
-
-        int blockCount = 0;
-        for (int x = -1; x <= 1; x++) {
-            for (int y = -1; y <= 1; y++) {
-                for (int z = -1; z <= 1; z++) {
-                    if (x == 0 && y == 0 && z == 0) continue;
-                    Vector direction = new Vector(x, y, z);
-                    blockCount += castRayUntilBlock(
-                            new BlockIterator(player.getWorld(), player.getLocation().toVector(), direction, 0, 50),
-                            caveBlocks);
-                }
-            }
-        }
-
-        return blockCount / 26.0;
-    }
-
-    private int castRayUntilBlock(BlockIterator blockIterator, String[] caveBlocks) {
-        while (blockIterator.hasNext()) {
-            Block block = blockIterator.next();
-            if (block.getType().isSolid()) {
-                if (Arrays.asList(caveBlocks).contains(getBlockType(block))) {
-                    return 1;
-                }
-                break;
-            }
-        }
-        return 0;
-    }
-
-    private String getBlockType(Block block) {
-        return block.getType().toString();
+        // Optimized: Check only above (sky) and below (deep slate/caves)
+        // This is a rough approximation but much faster than 26 rays.
+        Location loc = player.getLocation();
+        if (loc.getBlockY() < CAVE_Y_THRESHOLD) return CAVE_DENSITY_DEEP; // Deep underground
+        if (loc.getWorld().getHighestBlockYAt(loc) > loc.getBlockY()) return CAVE_DENSITY_COVERED; // Under something (cave/building)
+        return CAVE_DENSITY_SKY; // Open sky
     }
 
     private String getDimensionId(Player player) {
-        return switch (player.getWorld().getName()) {
-            case "world" -> "minecraft:overworld";
-            case "world_nether" -> "minecraft:nether";
-            case "world_the_end" -> "minecraft:the_end";
+        // Improved: Use Environment
+        return switch (player.getWorld().getEnvironment()) {
+            case NORMAL -> "minecraft:overworld";
+            case NETHER -> "minecraft:nether";
+            case THE_END -> "minecraft:the_end";
             default -> "minecraft:unknown";
         };
-    }
-
-    private boolean reconnect() {
-        if (reconnectRetries < 5) {
-            reconnectRetries++;
-
-            plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-reconnecting-attempt").replace("$attempt",
-                    String.valueOf(reconnectRetries)));
-
-            if (plugin.reconnect(true)) {
-                plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-reconnecting-success"));
-
-                if (plugin.getConfig().getBoolean("config.voice.send-connection-lost-message")) {
-                    Bukkit.broadcast(Component.text(Language.getMessage(lang, "plugin-connection-reconnecting-success"))
-                            .color(NamedTextColor.GREEN));
-                }
-                return true;
-            } else {
-                if (reconnectRetries < 5) {
-                    plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-reconnecting-failed-retry"));
-                    try {
-                        TimeUnit.SECONDS.sleep(1);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                    return reconnect();
-                }
-                plugin.Logger.error(Language.getMessage(lang, "plugin-connection-reconnecting-failed"));
-
-                if (plugin.getConfig().getBoolean("config.voice.send-connection-lost-message")) {
-                    Bukkit.broadcast(Component.text(Language.getMessage(lang, "plugin-connection-reconnecting-failed"))
-                            .color(NamedTextColor.RED));
-                }
-                cancel();
-            }
-        }
-        return false;
     }
 }

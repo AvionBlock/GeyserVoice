@@ -38,6 +38,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.FileOutputStream;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentHashMap;
 
 import java.util.Objects;
 import java.util.Map;
@@ -51,18 +52,29 @@ import java.util.HashMap;
 public class GeyserVoice implements BaseGeyserVoice {
     private final @Getter ProxyServer proxy;
     private final @Getter File dataFolder;
-    private static @Getter Yaml config;
+    private static Yaml config;
 
-    private static @Getter GeyserVoice instance;
-    private @Getter boolean isConnected = false;
-    private @Getter String host = "";
-    private @Getter int port = 0;
-    private @Getter String serverKey = "";
-    private @Getter Map<String, Boolean> playerBinds = new HashMap<>();
-    private @Getter String token = "";
+    private static GeyserVoice instance;
+    private boolean isConnected = false;
+    private String host = "";
+    private int port = 0;
+    private String serverKey = "";
+    private Map<String, Boolean> playerBinds = new HashMap<>();
+    private String token = "";
     private String lang;
-    private @Getter PluginMessageHandler messageHandler = new PluginMessageHandler(this);
-    public Map<String, PlayerData> playerDataList = new HashMap<>();
+    private PluginMessageHandler messageHandler = new PluginMessageHandler(this);
+    public Map<String, PlayerData> playerDataList = new ConcurrentHashMap<>();
+
+    public static Yaml getConfig() { return config; }
+    public static GeyserVoice getInstance() { return instance; }
+    public boolean isConnected() { return isConnected; }
+    public String getHost() { return host; }
+    public int getPort() { return port; }
+    public String getServerKey() { return serverKey; }
+    public Map<String, Boolean> getPlayerBinds() { return playerBinds; }
+    public String getToken() { return token; }
+    public String getLang() { return lang; }
+    public PluginMessageHandler getMessageHandler() { return messageHandler; }
 
     private ScheduledTask taskRunner;
     private PositionsTask positionsTask = new PositionsTask(this, lang);
@@ -264,7 +276,7 @@ public class GeyserVoice implements BaseGeyserVoice {
                 player.getUsername());
         playerBinds.put(player.getUsername(), false);
         if (result != null) {
-            if (result == "SUCCESS") {
+            if ("SUCCESS".equals(result)) {
                 playerBinds.put(player.getUsername(), true);
                 messageHandler.sendPlayerBindSync(player);
 
@@ -284,7 +296,7 @@ public class GeyserVoice implements BaseGeyserVoice {
                     );
                 }
                 return true;
-            } else if (result == "Invalid Token!" && tries == 0) {
+            } else if ("Invalid Token!".equals(result) && tries == 0) {
                 Logger.info("Invalid Token detected, reconnecting...");
                 isConnected = reconnect(true);
                 return bind(playerKey, player, 1);
@@ -314,10 +326,10 @@ public class GeyserVoice implements BaseGeyserVoice {
             
         String link = "http://" + host + ":" + port;
 
-        String result = network.sendBindRequest(link, token, playerKey, String.format("%0", playerKey), name);
+        String result = network.sendBindRequest(link, token, playerKey, String.format("%d", playerKey), name);
         playerBinds.put(name, false);
         if (result != null) {
-            if (result == "SUCCESS") {
+            if ("SUCCESS".equals(result)) {
                 playerBinds.put(name, true);
                 // messageHandler.sendPlayerBindSync(player);
 
@@ -337,7 +349,7 @@ public class GeyserVoice implements BaseGeyserVoice {
                     );
                 }
                 return true;
-            } else if (result == "Invalid Token!" && tries == 0) {
+            } else if ("Invalid Token!".equals(result) && tries == 0) {
                 Logger.info("Invalid Token detected, reconnecting...");
                 isConnected = reconnect(true);
                 return bindFake(playerKey, name, 1);
@@ -365,11 +377,11 @@ public class GeyserVoice implements BaseGeyserVoice {
         String result = network.sendDisconnectRequest(link, token, player.getUniqueId().toString(),
                 player.getUsername());
         if (result != null) {
-            if (result == "SUCCESS") {
+            if ("SUCCESS".equals(result)) {
                 playerBinds.remove(player.getUsername());
                 messageHandler.sendPlayerBindSync(player);
                 return true;
-            } else if (result == "Invalid Token!" && tries == 0) {
+            } else if ("Invalid Token!".equals(result) && tries == 0) {
                 Logger.info("Invalid Token detected, reconnecting...");
                 isConnected = reconnect(true);
                 return disconnectPlayer(player, 1);
@@ -413,7 +425,7 @@ public class GeyserVoice implements BaseGeyserVoice {
     }
 
     public void saveDefaultConfig() {
-        config.addDefaultsFromInputStream(getClass().getResourceAsStream("/config.yaml"));
+        config.addDefaultsFromInputStream(getClass().getResourceAsStream("/config.yml"));
     }
 
     public void saveResource(String resourcePath, boolean replace) {

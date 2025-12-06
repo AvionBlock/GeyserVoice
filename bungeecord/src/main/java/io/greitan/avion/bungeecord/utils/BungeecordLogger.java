@@ -7,8 +7,32 @@ import io.greitan.avion.bungeecord.GeyserVoice;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.chat.ComponentSerializer;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 
 public class BungeecordLogger extends BaseLogger {
+
+    @Override
+    public void log(Component msg) {
+        CommandSender console = GeyserVoice.getInstance().getProxy().getConsole();
+        String json = GsonComponentSerializer.gson().serialize(msg);
+        BaseComponent[] components = ComponentSerializer.parse(json);
+        
+        BaseComponent[] coloredLogo = new ComponentBuilder("[")
+                .color(ChatColor.WHITE)
+                .bold(true)
+                .append("GeyserVoice")
+                .color(ChatColor.LIGHT_PURPLE)
+                .bold(true)
+                .append("] ")
+                .color(ChatColor.WHITE)
+                .bold(true)
+                .append(components)
+                .create();
+
+        console.sendMessage(coloredLogo);
+    }
 
     public void log(BaseComponent[] msg) {
         CommandSender console = GeyserVoice.getInstance().getProxy().getConsole();

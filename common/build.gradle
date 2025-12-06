@@ -1,9 +1,12 @@
 plugins {
-    id 'io.github.goooler.shadow'
+    id 'java-library'
+    id 'com.gradleup.shadow'
 }
 
 dependencies {
-    implementation("com.fasterxml.jackson.core:jackson-databind:${project.jackson_version}")
+    api("com.fasterxml.jackson.core:jackson-databind:${project.jackson_version}")
+    compileOnly "me.clip:placeholderapi:2.11.6"
+    compileOnly "net.kyori:adventure-api:4.17.0"
 }
 
 shadowJar {

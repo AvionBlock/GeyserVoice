@@ -4,7 +4,6 @@ import io.greitan.avion.velocity.GeyserVoice;
 import io.greitan.avion.velocity.utils.Language;
 import io.greitan.avion.common.network.Payloads.PacketType;
 import io.greitan.avion.common.network.Payloads.PlayerData;
-import io.greitan.avion.common.network.Payloads.MCCommPacket;
 import io.greitan.avion.common.network.Payloads.UpdatePacket;
 import io.greitan.avion.common.network.Payloads.DenyPacket;
 
@@ -12,6 +11,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,116 +19,125 @@ import java.util.List;
 public class PositionsTask {
     private final GeyserVoice plugin;
     private final String lang;
-    private boolean isConnected = false;
-    private Integer ReconnectRetries = 0;
+    private final AtomicBoolean isRequestPending = new AtomicBoolean(false);
+    private int reconnectRetries = 0;
 
     public PositionsTask(GeyserVoice plugin, String lang) {
         this.plugin = plugin;
         this.lang = lang;
     }
 
-    public Boolean run() {
-        isConnected = plugin.isConnected();
+    public boolean run() {
+        if (!plugin.isConnected()) {
+            return false; // Cancels the task in GeyserVoice
+        }
+
+        // Prevent stacking requests
+        if (isRequestPending.get()) return true;
+
         String host = plugin.getHost();
         int port = plugin.getPort();
         String token = plugin.getToken();
         String link = "http://" + host + ":" + port;
 
-        if (isConnected) {
-            if (host != null && token != null) {
-                UpdatePacket updatePacket = new UpdatePacket();
-                updatePacket.Token = token;
-                updatePacket.Players = getPlayerDataList(plugin.playerDataList);
+        if (host != null && token != null) {
+            // 1. Gather data (Proxy is thread-safe for getting players usually, verifying thread context isn't as strict as Bukkit)
+            // However, modifying collections while iterating can be an issue.
+            // We clone the values to be safe.
+            List<PlayerData> players = getPlayerDataList(plugin.playerDataList);
+            
+            UpdatePacket updatePacket = new UpdatePacket();
+            updatePacket.token = token;
+            updatePacket.players = players;
 
-                MCCommPacket response = plugin.network.sendPostRequest(link, updatePacket);
-                if (response != null) {
-                    if (response.PacketId == PacketType.AckUpdate.ordinal()) {
-                        // AckUpdatePacket packetData = plugin.objectMapper.convertValue(response,
-                        // AckUpdatePacket.class);
-                        // You can do stuff with the AckUpdate packet data here...
-                        return true;
-                    } else if (response.PacketId == PacketType.Deny.ordinal()) {
-                        DenyPacket packetData = GeyserVoice.objectMapper.convertValue(response, DenyPacket.class);
-                        plugin.Logger.error(packetData.Reason);
-                        if (!packetData.Reason.equals("Invalid Token!")) {
-                            plugin.setNotConnected();
-                            // http.cancelAll(packetData.Reason);
-                            // cancel();
-                            return false;
-                        }
+            // 2. Send async
+            isRequestPending.set(true);
+            plugin.network.sendPostRequestAsync(link, updatePacket)
+                .thenAccept(response -> {
+                    if (response != null) {
+                         if (response.getPacketId() == PacketType.AckUpdate.ordinal()) {
+                             // OK
+                         } else if (response.getPacketId() == PacketType.Deny.ordinal()) {
+                            DenyPacket packetData = GeyserVoice.objectMapper.convertValue(response, DenyPacket.class);
+                            plugin.Logger.error("Server Denied: " + packetData.reason);
+                            if (!"Invalid Token!".equals(packetData.reason)) {
+                                plugin.setNotConnected();
+                            } else {
+                                handleReconnect();
+                            }
+                         }
                     } else {
-                        return false;
+                        handleReconnect();
                     }
-                }
-                if (!isConnected)
-                    return true; // do nothing.
-
-                plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-lost"));
-                plugin.setNotConnected();
-
-                if (GeyserVoice.getConfig().getBoolean("config.auto-reconnect")) {
-                    if (GeyserVoice.getConfig().getBoolean("config.voice.send-connection-lost-message")) {
-                        plugin.getProxy().sendMessage(
-                                Component.text(Language.getMessage(lang, "plugin-connection-lost-reconnect"))
-                                        .color(NamedTextColor.RED));
-                    }
-                    ReconnectRetries = 0;
-                    return Reconnect();
-                }
-                if (GeyserVoice.getConfig().getBoolean("config.voice.send-connection-lost-message")) {
-                    plugin.getProxy().sendMessage(Component.text(Language.getMessage(lang, "plugin-connection-lost"))
-                            .color(NamedTextColor.RED));
-                }
-                return false;
-            }
+                })
+                .whenComplete((res, ex) -> isRequestPending.set(false));
         }
-        return true;
+
+        return true; // Keep running
     }
 
     public List<PlayerData> getPlayerDataList(Map<String, PlayerData> allPlayerDataList) {
-        List<PlayerData> playerDataList = new ArrayList<>();
-
-        for (String playerId : allPlayerDataList.keySet()) {
-            playerDataList.add(allPlayerDataList.get(playerId));
-        }
-
-        return playerDataList;
+        // synchronized? playerDataList is a synchronized map or HashMap?
+        // In GeyserVoice it is HashMap. Accessing it from this task (which runs on proxy scheduler) should be fine 
+        // if PluginMessageHandler also runs on proxy threads.
+        return new ArrayList<>(allPlayerDataList.values());
     }
 
-    private Boolean Reconnect() {
-        if (ReconnectRetries < 5) {
-            ReconnectRetries++;
+    private void handleReconnect() {
+        plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-lost"));
+        plugin.setNotConnected(); // Next run() will return false and cancel task
 
-            plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-reconnecting-attempt").replace("$attempt",
-                    ReconnectRetries.toString()));
+        if (GeyserVoice.getConfig().getBoolean("config.auto-reconnect")) {
+            if (GeyserVoice.getConfig().getBoolean("config.voice.send-connection-lost-message")) {
+                plugin.getProxy().sendMessage(
+                        Component.text(Language.getMessage(lang, "plugin-connection-lost-reconnect"))
+                                .color(NamedTextColor.RED));
+            }
+            reconnectRetries = 0;
+            scheduleReconnect();
+        } else {
+            if (GeyserVoice.getConfig().getBoolean("config.voice.send-connection-lost-message")) {
+                plugin.getProxy().sendMessage(Component.text(Language.getMessage(lang, "plugin-connection-lost"))
+                        .color(NamedTextColor.RED));
+            }
+        }
+    }
 
-            if (plugin.reconnect(true)) {
-                plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-reconnecting-success"));
+    private void scheduleReconnect() {
+        plugin.getProxy().getScheduler().buildTask(plugin, this::attemptReconnect)
+            .delay(1, TimeUnit.SECONDS)
+            .schedule();
+    }
 
-                if (GeyserVoice.getConfig().getBoolean("config.voice.send-connection-lost-message")) {
-                    plugin.getProxy().sendMessage(
-                            Component.text(Language.getMessage(lang, "plugin-connection-reconnecting-success"))
-                                    .color(NamedTextColor.GREEN));
-                }
-                return true;
-            } else {
-                if (ReconnectRetries < 5) {
-                    plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-reconnecting-failed-retry"));
-                    try {
-                        TimeUnit.SECONDS.sleep(1);
-                    } catch (Exception e) {
+    private void attemptReconnect() {
+        // Reconnect async to avoid blocking scheduler
+        plugin.getProxy().getScheduler().buildTask(plugin, () -> {
+            if (reconnectRetries < 5) {
+                reconnectRetries++;
+                plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-reconnecting-attempt")
+                        .replace("$attempt", String.valueOf(reconnectRetries)));
+
+                if (plugin.reconnect(true)) {
+                    plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-reconnecting-success"));
+                    if (GeyserVoice.getConfig().getBoolean("config.voice.send-connection-lost-message")) {
+                        plugin.getProxy().sendMessage(
+                                Component.text(Language.getMessage(lang, "plugin-connection-reconnecting-success"))
+                                        .color(NamedTextColor.GREEN));
                     }
-                    return Reconnect();
+                    // Re-trigger reload() to restart tasks
+                    plugin.reload(); 
+                } else {
+                     plugin.Logger.warn(Language.getMessage(lang, "plugin-connection-reconnecting-failed-retry"));
+                     scheduleReconnect();
                 }
+            } else {
                 plugin.Logger.error(Language.getMessage(lang, "plugin-connection-reconnecting-failed"));
-
-                if (GeyserVoice.getConfig().getBoolean("config.voice.send-connection-lost-message")) {
+                 if (GeyserVoice.getConfig().getBoolean("config.voice.send-connection-lost-message")) {
                     plugin.getProxy().sendMessage(
                             Component.text(Language.getMessage(lang, "plugin-connection-reconnecting-failed"))
                                     .color(NamedTextColor.RED));
                 }
             }
-        }
-        return false;
+        }).schedule();
     }
 }

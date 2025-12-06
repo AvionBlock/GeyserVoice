@@ -26,15 +26,15 @@ public class PluginMessageHandler implements PluginMessageListener {
     public void sendPlayerData(Player player, PlayerData playerData) {
         ByteArrayDataOutput out = ByteStreams.newDataOutput();
         out.writeUTF("PlayerData");
-        out.writeUTF(playerData.PlayerId);
-        out.writeUTF(playerData.DimensionId);
-        out.writeDouble(playerData.Location.x);
-        out.writeDouble(playerData.Location.y);
-        out.writeDouble(playerData.Location.z);
-        out.writeDouble(playerData.Rotation);
-        out.writeDouble(playerData.EchoFactor);
-        out.writeBoolean(playerData.Muffled);
-        out.writeBoolean(playerData.IsDead);
+        out.writeUTF(playerData.playerId);
+        out.writeUTF(playerData.dimensionId);
+        out.writeDouble(playerData.location.x);
+        out.writeDouble(playerData.location.y);
+        out.writeDouble(playerData.location.z);
+        out.writeDouble(playerData.rotation);
+        out.writeDouble(playerData.echoFactor);
+        out.writeBoolean(playerData.muffled);
+        out.writeBoolean(playerData.isDead);
         player.sendPluginMessage(plugin, channelName, out.toByteArray());
     }
 
@@ -46,6 +46,7 @@ public class PluginMessageHandler implements PluginMessageListener {
             server.sendPluginMessage(plugin, channelName, out.toByteArray());
             // The response will be handled in onPluginMessageReceived
         } catch (JsonProcessingException e) {
+            plugin.Logger.error("Failed to serialize PlayerDataList: " + e.getMessage());
         }
     }
 

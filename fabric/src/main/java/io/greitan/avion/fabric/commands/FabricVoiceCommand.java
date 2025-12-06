@@ -76,17 +76,18 @@ public class FabricVoiceCommand {
                     else if (colorName.equals("green")) color = Formatting.GREEN;
                     else if (colorName.equals("yellow")) color = Formatting.YELLOW;
                     
-                    source.sendFeedback(() -> Text.literal(text).formatted(color), false);
+                    final Formatting finalColor = color;
+                    source.sendFeedback(() -> Text.literal(text).formatted(finalColor), false);
                 }
             },
             new IntegerOperation() {
                 @Override
                 public boolean execute(int key) {
                     if (isPlayer) {
-                        String playerName = source.getName();
-                        // We need to implement bind(key, player) in FabricGeyserVoice but since we don't have easy Player object access in BaseVoiceCommand logic directly matching Bukkit
-                        // We will use bindFake logic or similar binding but with real player UUID/Name
-                        return FabricGeyserVoice.getInstance().bindFake(key, playerName);
+                        var player = source.getPlayer();
+                        if (player != null) {
+                            return FabricGeyserVoice.getInstance().bind(key, player.getUuid(), player.getName().getString());
+                        }
                     }
                     return false;
                 }

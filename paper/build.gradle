@@ -1,22 +1,31 @@
 plugins {
-    id 'io.github.goooler.shadow'
+    id 'java'
+    id 'com.gradleup.shadow'
 }
 
 dependencies {
     implementation project(':common')
     compileOnly "io.papermc.paper:paper-api:${project.paper_version}"
     compileOnly "me.clip:placeholderapi:2.11.6"
+    compileOnly "org.projectlombok:lombok:${project.lombok_version}"
+    annotationProcessor "org.projectlombok:lombok:${project.lombok_version}"
 }
 
 shadowJar {
     archiveClassifier.set('')
-    relocate 'io.greitan.avion.common', 'io.greitan.avion.paper.common'
+    // relocate 'io.greitan.avion.common', 'io.greitan.avion.paper.common'
     configurations = [project.configurations.runtimeClasspath]
 }
 
-blossom {
-    replaceToken '{{ version }}', project.version
-    replaceToken '{{ description }}', project.description
-    replaceToken '{{ name }}', rootProject.name
-    replaceToken '{{ url }}', 'https://uninode.de'
+processResources {
+    filter { line ->
+        line.replace('{{ version }}', project.version.toString())
+            .replace('{{ description }}', project.description.toString())
+            .replace('{{ name }}', rootProject.name.toString())
+            .replace('{{ url }}', 'https://uninode.de')
+    }
+}
+
+jar {
+    archiveClassifier.set('unshaded')
 }

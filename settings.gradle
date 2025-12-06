@@ -1,2 +1,13 @@
+pluginManagement {
+    repositories {
+        maven {
+            name = 'Fabric'
+            url = 'https://maven.fabricmc.net/'
+        }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
 rootProject.name = 'GeyserVoice'
-include 'common', 'paper', 'fabric', 'velocity', 'bungeecord'
+include 'common', 'fabric', 'paper', 'bungeecord', 'velocity'

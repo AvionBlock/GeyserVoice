@@ -2,6 +2,7 @@ package io.greitan.avion.fabric.utils;
 
 import io.greitan.avion.common.utils.BaseLogger;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,9 +15,7 @@ public class FabricLogger extends BaseLogger {
 
     @Override
     public void log(Component msg) {
-        // Ideally convert Component to string or use adventure-platform-fabric if available.
-        // For now, simple toString/serializing
-        logger.info(msg.toString());
+       logger.info(PlainTextComponentSerializer.plainText().serialize(msg));
     }
 
     @Override

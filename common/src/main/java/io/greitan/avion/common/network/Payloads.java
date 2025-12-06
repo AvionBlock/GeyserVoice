@@ -5,10 +5,10 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 import java.util.Map;
+import java.util.Collections;
 
 /**
- * Modern Java 21 Records implementation of Network Payloads.
- * Uses Sealed Interfaces for strict type control (SOTA).
+ * Mutable POJO implementation of Network Payloads for compatibility.
  */
 public class Payloads {
 
@@ -53,215 +53,310 @@ public class Payloads {
         @JsonSubTypes.Type(value = GetParticipantsPacket.class, name = "12"),
         @JsonSubTypes.Type(value = DisconnectParticipantPacket.class, name = "13"),
     })
-    public sealed interface MCCommPacket permits 
-        LoginPacket, LogoutPacket, AcceptPacket, DenyPacket, BindPacket, 
-        UpdatePacket, AckUpdatePacket, GetChannelsPacket, GetChannelSettingsPacket, 
-        SetChannelSettingsPacket, GetDefaultSettingsPacket, SetDefaultSettingsPacket, 
-        GetParticipantsPacket, DisconnectParticipantPacket {
-        
-        @JsonProperty("PacketId") int packetId();
-        @JsonProperty("Token") String token();
+    public interface MCCommPacket {
+        int getPacketId();
+        String getToken();
     }
 
-    // --- Records ---
+    // --- Classes ---
 
-    public record LoginPacket(
-        @JsonProperty("PacketId") int packetId,
-        @JsonProperty("Token") String token,
-        @JsonProperty("LoginKey") String loginKey,
-        @JsonProperty("Version") String version
-    ) implements MCCommPacket {
-        public LoginPacket(String loginKey, String version) {
-            this(PacketType.Login.ordinal(), "", loginKey, version);
-        }
-        // Default constructor for Jackson
+    public static class LoginPacket implements MCCommPacket {
+        @JsonProperty("PacketId") public int packetId;
+        @JsonProperty("Token") public String token;
+        @JsonProperty("LoginKey") public String loginKey;
+        @JsonProperty("Version") public String version;
+
         public LoginPacket() {
-            this(PacketType.Login.ordinal(), "", "", "");
+            this.packetId = PacketType.Login.ordinal();
+            this.token = "";
+            this.loginKey = "";
+            this.version = "";
         }
+
+        public LoginPacket(String loginKey, String version) {
+            this.packetId = PacketType.Login.ordinal();
+            this.token = "";
+            this.loginKey = loginKey;
+            this.version = version;
+        }
+        
+        public int getPacketId() { return packetId; }
+        public String getToken() { return token; }
     }
 
-    public record LogoutPacket(
-        @JsonProperty("PacketId") int packetId,
-        @JsonProperty("Token") String token
-    ) implements MCCommPacket {
-        public LogoutPacket(String token) {
-            this(PacketType.Logout.ordinal(), token);
-        }
+    public static class LogoutPacket implements MCCommPacket {
+        @JsonProperty("PacketId") public int packetId;
+        @JsonProperty("Token") public String token;
+
         public LogoutPacket() {
-            this(PacketType.Logout.ordinal(), "");
+            this.packetId = PacketType.Logout.ordinal();
+            this.token = "";
         }
+
+        public LogoutPacket(String token) {
+            this.packetId = PacketType.Logout.ordinal();
+            this.token = token;
+        }
+        public int getPacketId() { return packetId; }
+        public String getToken() { return token; }
     }
 
-    public record AcceptPacket(
-        @JsonProperty("PacketId") int packetId,
-        @JsonProperty("Token") String token
-    ) implements MCCommPacket {
+    public static class AcceptPacket implements MCCommPacket {
+        @JsonProperty("PacketId") public int packetId;
+        @JsonProperty("Token") public String token;
+
         public AcceptPacket() {
-            this(PacketType.Accept.ordinal(), "");
+            this.packetId = PacketType.Accept.ordinal();
+            this.token = "";
         }
+        public int getPacketId() { return packetId; }
+        public String getToken() { return token; }
     }
 
-    public record DenyPacket(
-        @JsonProperty("PacketId") int packetId,
-        @JsonProperty("Token") String token,
-        @JsonProperty("Reason") String reason
-    ) implements MCCommPacket {
+    public static class DenyPacket implements MCCommPacket {
+        @JsonProperty("PacketId") public int packetId;
+        @JsonProperty("Token") public String token;
+        @JsonProperty("Reason") public String reason;
+
         public DenyPacket() {
-            this(PacketType.Deny.ordinal(), "", "");
+            this.packetId = PacketType.Deny.ordinal();
+            this.token = "";
+            this.reason = "";
         }
+        public int getPacketId() { return packetId; }
+        public String getToken() { return token; }
     }
 
-    public record BindPacket(
-        @JsonProperty("PacketId") int packetId,
-        @JsonProperty("Token") String token,
-        @JsonProperty("PlayerId") String playerId,
-        @JsonProperty("PlayerKey") int playerKey,
-        @JsonProperty("Gamertag") String gamertag
-    ) implements MCCommPacket {
-        public BindPacket(String token, String playerId, int playerKey, String gamertag) {
-            this(PacketType.Bind.ordinal(), token, playerId, playerKey, gamertag);
-        }
+    public static class BindPacket implements MCCommPacket {
+        @JsonProperty("PacketId") public int packetId;
+        @JsonProperty("Token") public String token;
+        @JsonProperty("PlayerId") public String playerId;
+        @JsonProperty("PlayerKey") public int playerKey;
+        @JsonProperty("Gamertag") public String gamertag;
+
         public BindPacket() {
-            this(PacketType.Bind.ordinal(), "", "", 0, "");
+            this.packetId = PacketType.Bind.ordinal();
+            this.token = "";
+            this.playerId = "";
+            this.playerKey = 0;
+            this.gamertag = "";
         }
+
+        public BindPacket(String token, String playerId, int playerKey, String gamertag) {
+            this.packetId = PacketType.Bind.ordinal();
+            this.token = token;
+            this.playerId = playerId;
+            this.playerKey = playerKey;
+            this.gamertag = gamertag;
+        }
+        public int getPacketId() { return packetId; }
+        public String getToken() { return token; }
     }
 
-    public record UpdatePacket(
-        @JsonProperty("PacketId") int packetId,
-        @JsonProperty("Token") String token,
-        @JsonProperty("Players") List<PlayerData> players
-    ) implements MCCommPacket {
+    public static class UpdatePacket implements MCCommPacket {
+        @JsonProperty("PacketId") public int packetId;
+        @JsonProperty("Token") public String token;
+        @JsonProperty("Players") public List<PlayerData> players;
+
         public UpdatePacket() {
-            this(PacketType.Update.ordinal(), "", List.of());
+            this.packetId = PacketType.Update.ordinal();
+            this.token = "";
+            this.players = Collections.emptyList();
         }
+        public int getPacketId() { return packetId; }
+        public String getToken() { return token; }
     }
 
-    public record AckUpdatePacket(
-        @JsonProperty("PacketId") int packetId,
-        @JsonProperty("Token") String token,
-        @JsonProperty("SpeakingPlayers") List<String> speakingPlayers
-    ) implements MCCommPacket {
+    public static class AckUpdatePacket implements MCCommPacket {
+        @JsonProperty("PacketId") public int packetId;
+        @JsonProperty("Token") public String token;
+        @JsonProperty("SpeakingPlayers") public List<String> speakingPlayers;
+
         public AckUpdatePacket() {
-            this(PacketType.AckUpdate.ordinal(), "", List.of());
+            this.packetId = PacketType.AckUpdate.ordinal();
+            this.token = "";
+            this.speakingPlayers = Collections.emptyList();
         }
+        public int getPacketId() { return packetId; }
+        public String getToken() { return token; }
     }
 
-    public record GetChannelsPacket(
-        @JsonProperty("PacketId") int packetId,
-        @JsonProperty("Token") String token,
-        @JsonProperty("Channels") Map<Integer, ChannelData> channels
-    ) implements MCCommPacket {
+    public static class GetChannelsPacket implements MCCommPacket {
+        @JsonProperty("PacketId") public int packetId;
+        @JsonProperty("Token") public String token;
+        @JsonProperty("Channels") public Map<Integer, ChannelData> channels;
+
         public GetChannelsPacket() {
-            this(PacketType.GetChannels.ordinal(), "", Map.of());
+            this.packetId = PacketType.GetChannels.ordinal();
+            this.token = "";
+            this.channels = Collections.emptyMap();
         }
+        public int getPacketId() { return packetId; }
+        public String getToken() { return token; }
     }
 
-    public record GetChannelSettingsPacket(
-        @JsonProperty("PacketId") int packetId,
-        @JsonProperty("Token") String token,
-        @JsonProperty("ChannelId") int channelId,
-        @JsonProperty("ProximityDistance") int proximityDistance,
-        @JsonProperty("ProximityToggle") boolean proximityToggle,
-        @JsonProperty("VoiceEffects") boolean voiceEffects
-    ) implements MCCommPacket {
+    public static class GetChannelSettingsPacket implements MCCommPacket {
+        @JsonProperty("PacketId") public int packetId;
+        @JsonProperty("Token") public String token;
+        @JsonProperty("ChannelId") public int channelId;
+        @JsonProperty("ProximityDistance") public int proximityDistance;
+        @JsonProperty("ProximityToggle") public boolean proximityToggle;
+        @JsonProperty("VoiceEffects") public boolean voiceEffects;
+
         public GetChannelSettingsPacket() {
-            this(PacketType.GetChannelSettings.ordinal(), "", 0, 30, true, true);
+            this.packetId = PacketType.GetChannelSettings.ordinal();
+            this.token = "";
+            this.channelId = 0;
+            this.proximityDistance = 30;
+            this.proximityToggle = true;
+            this.voiceEffects = true;
         }
+        public int getPacketId() { return packetId; }
+        public String getToken() { return token; }
     }
 
-    public record SetChannelSettingsPacket(
-        @JsonProperty("PacketId") int packetId,
-        @JsonProperty("Token") String token,
-        @JsonProperty("ChannelId") int channelId,
-        @JsonProperty("ProximityDistance") int proximityDistance,
-        @JsonProperty("ProximityToggle") boolean proximityToggle,
-        @JsonProperty("VoiceEffects") boolean voiceEffects,
-        @JsonProperty("ClearSettings") boolean clearSettings
-    ) implements MCCommPacket {
+    public static class SetChannelSettingsPacket implements MCCommPacket {
+        @JsonProperty("PacketId") public int packetId;
+        @JsonProperty("Token") public String token;
+        @JsonProperty("ChannelId") public int channelId;
+        @JsonProperty("ProximityDistance") public int proximityDistance;
+        @JsonProperty("ProximityToggle") public boolean proximityToggle;
+        @JsonProperty("VoiceEffects") public boolean voiceEffects;
+        @JsonProperty("ClearSettings") public boolean clearSettings;
+
         public SetChannelSettingsPacket() {
-            this(PacketType.SetChannelSettings.ordinal(), "", 0, 30, true, true, true);
+            this.packetId = PacketType.SetChannelSettings.ordinal();
+            this.token = "";
+            this.channelId = 0;
+            this.proximityDistance = 30;
+            this.proximityToggle = true;
+            this.voiceEffects = true;
+            this.clearSettings = true;
         }
+        public int getPacketId() { return packetId; }
+        public String getToken() { return token; }
     }
 
-    public record GetDefaultSettingsPacket(
-        @JsonProperty("PacketId") int packetId,
-        @JsonProperty("Token") String token,
-        @JsonProperty("ProximityDistance") int proximityDistance,
-        @JsonProperty("ProximityToggle") boolean proximityToggle,
-        @JsonProperty("VoiceEffects") boolean voiceEffects
-    ) implements MCCommPacket {
+    public static class GetDefaultSettingsPacket implements MCCommPacket {
+        @JsonProperty("PacketId") public int packetId;
+        @JsonProperty("Token") public String token;
+        @JsonProperty("ProximityDistance") public int proximityDistance;
+        @JsonProperty("ProximityToggle") public boolean proximityToggle;
+        @JsonProperty("VoiceEffects") public boolean voiceEffects;
+
         public GetDefaultSettingsPacket() {
-            this(PacketType.GetDefaultSettings.ordinal(), "", 30, true, true);
+            this.packetId = PacketType.GetDefaultSettings.ordinal();
+            this.token = "";
+            this.proximityDistance = 30;
+            this.proximityToggle = true;
+            this.voiceEffects = true;
         }
+        public int getPacketId() { return packetId; }
+        public String getToken() { return token; }
     }
 
-    public record SetDefaultSettingsPacket(
-        @JsonProperty("PacketId") int packetId,
-        @JsonProperty("Token") String token,
-        @JsonProperty("ProximityDistance") int proximityDistance,
-        @JsonProperty("ProximityToggle") boolean proximityToggle,
-        @JsonProperty("VoiceEffects") boolean voiceEffects
-    ) implements MCCommPacket {
-        public SetDefaultSettingsPacket(String token, int proximityDistance, boolean proximityToggle, boolean voiceEffects) {
-            this(PacketType.SetDefaultSettings.ordinal(), token, proximityDistance, proximityToggle, voiceEffects);
-        }
+    public static class SetDefaultSettingsPacket implements MCCommPacket {
+        @JsonProperty("PacketId") public int packetId;
+        @JsonProperty("Token") public String token;
+        @JsonProperty("ProximityDistance") public int proximityDistance;
+        @JsonProperty("ProximityToggle") public boolean proximityToggle;
+        @JsonProperty("VoiceEffects") public boolean voiceEffects;
+
         public SetDefaultSettingsPacket() {
-            this(PacketType.SetDefaultSettings.ordinal(), "", 30, true, true);
+            this.packetId = PacketType.SetDefaultSettings.ordinal();
+            this.token = "";
+            this.proximityDistance = 30;
+            this.proximityToggle = true;
+            this.voiceEffects = true;
         }
+
+        public SetDefaultSettingsPacket(String token, int proximityDistance, boolean proximityToggle, boolean voiceEffects) {
+            this.packetId = PacketType.SetDefaultSettings.ordinal();
+            this.token = token;
+            this.proximityDistance = proximityDistance;
+            this.proximityToggle = proximityToggle;
+            this.voiceEffects = voiceEffects;
+        }
+        public int getPacketId() { return packetId; }
+        public String getToken() { return token; }
     }
 
-    public record GetParticipantsPacket(
-        @JsonProperty("PacketId") int packetId,
-        @JsonProperty("Token") String token,
-        @JsonProperty("Players") List<String> players
-    ) implements MCCommPacket {
+    public static class GetParticipantsPacket implements MCCommPacket {
+        @JsonProperty("PacketId") public int packetId;
+        @JsonProperty("Token") public String token;
+        @JsonProperty("Players") public List<String> players;
+
         public GetParticipantsPacket() {
-            this(PacketType.GetParticipants.ordinal(), "", List.of());
+            this.packetId = PacketType.GetParticipants.ordinal();
+            this.token = "";
+            this.players = Collections.emptyList();
         }
+        public int getPacketId() { return packetId; }
+        public String getToken() { return token; }
     }
 
-    public record DisconnectParticipantPacket(
-        @JsonProperty("PacketId") int packetId,
-        @JsonProperty("Token") String token,
-        @JsonProperty("PlayerId") String playerId
-    ) implements MCCommPacket {
-        public DisconnectParticipantPacket(String token, String playerId) {
-            this(PacketType.DisconnectParticipant.ordinal(), token, playerId);
-        }
+    public static class DisconnectParticipantPacket implements MCCommPacket {
+        @JsonProperty("PacketId") public int packetId;
+        @JsonProperty("Token") public String token;
+        @JsonProperty("PlayerId") public String playerId;
+
         public DisconnectParticipantPacket() {
-            this(PacketType.DisconnectParticipant.ordinal(), "", "");
+            this.packetId = PacketType.DisconnectParticipant.ordinal();
+            this.token = "";
+            this.playerId = "";
+        }
+        
+        public DisconnectParticipantPacket(String token, String playerId) {
+            this.packetId = PacketType.DisconnectParticipant.ordinal();
+            this.token = token;
+            this.playerId = playerId;
+        }
+        public int getPacketId() { return packetId; }
+        public String getToken() { return token; }
+    }
+
+    // --- Support Classes ---
+
+    public static class LocationData {
+        public double x;
+        public double y;
+        public double z;
+
+        public LocationData() {}
+        public LocationData(double x, double y, double z) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
         }
     }
 
-    // --- Support Structures (using plain classes or records as needed) ---
+    public static class PlayerData {
+        @JsonProperty("PlayerId") public String playerId;
+        @JsonProperty("DimensionId") public String dimensionId;
+        @JsonProperty("Location") public LocationData location;
+        @JsonProperty("Rotation") public double rotation;
+        @JsonProperty("EchoFactor") public double echoFactor;
+        @JsonProperty("Muffled") public boolean muffled;
+        @JsonProperty("IsDead") public boolean isDead;
 
-    public record LocationData(
-        double x,
-        double y,
-        double z
-    ) {}
+        public PlayerData() {}
+    }
 
-    public record PlayerData(
-        @JsonProperty("PlayerId") String playerId,
-        @JsonProperty("DimensionId") String dimensionId,
-        @JsonProperty("Location") LocationData location,
-        @JsonProperty("Rotation") double rotation,
-        @JsonProperty("EchoFactor") double echoFactor,
-        @JsonProperty("Muffled") boolean muffled,
-        @JsonProperty("IsDead") boolean isDead
-    ) {}
+    public static class ChannelOverrideData {
+        @JsonProperty("ProximityDistance") public int proximityDistance;
+        @JsonProperty("ProximityToggle") public boolean proximityToggle;
+        @JsonProperty("VoiceEffects") public boolean voiceEffects;
 
-    public record ChannelOverrideData(
-        @JsonProperty("ProximityDistance") int proximityDistance,
-        @JsonProperty("ProximityToggle") boolean proximityToggle,
-        @JsonProperty("VoiceEffects") boolean voiceEffects
-    ) {}
+        public ChannelOverrideData() {}
+    }
 
-    public record ChannelData(
-        @JsonProperty("Name") String name,
-        @JsonProperty("Password") String password,
-        @JsonProperty("Locked") boolean locked,
-        @JsonProperty("Hidden") boolean hidden,
-        @JsonProperty("OverrideSettings") ChannelOverrideData overrideSettings
-    ) {}
+    public static class ChannelData {
+        @JsonProperty("Name") public String name;
+        @JsonProperty("Password") public String password;
+        @JsonProperty("Locked") public boolean locked;
+        @JsonProperty("Hidden") public boolean hidden;
+        @JsonProperty("OverrideSettings") public ChannelOverrideData overrideSettings;
+
+        public ChannelData() {}
+    }
 }

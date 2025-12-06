@@ -49,10 +49,10 @@ public class VoiceCommand extends Command implements TabExecutor {
                 @Override
                 public void execute(String text, String rawColor) {
                     ChatColor color = ChatColor.RED;
-                    if (rawColor == "red") color = ChatColor.RED;
-                    else if (rawColor == "aqua") color = ChatColor.AQUA;
-                    else if (rawColor == "green") color = ChatColor.GREEN;
-                    else if (rawColor == "yellow") color = ChatColor.YELLOW;
+                    if ("red".equals(rawColor)) color = ChatColor.RED;
+                    else if ("aqua".equals(rawColor)) color = ChatColor.AQUA;
+                    else if ("green".equals(rawColor)) color = ChatColor.GREEN;
+                    else if ("yellow".equals(rawColor)) color = ChatColor.YELLOW;
 
                     var message = new ComponentBuilder(Language.getMessage(lang, text)).color(color).create();
                     if (sender instanceof ProxiedPlayer)

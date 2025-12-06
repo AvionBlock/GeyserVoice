@@ -2,7 +2,6 @@ package io.greitan.avion.paper.utils;
 
 import org.bukkit.entity.Player;
 
-import io.greitan.avion.common.utils.BasePlaceholder;
 import io.greitan.avion.paper.GeyserVoice;
 
 public class Placeholder extends BasePlaceholder {

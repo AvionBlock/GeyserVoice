@@ -61,34 +61,43 @@ public class PluginMessageHandler implements Listener {
             return;
         }
 
-        ByteArrayDataInput in = ByteStreams.newDataInput(event.getData());
-        String subchannel = in.readUTF();
-        if (subchannel.equals("PlayerDataList")) {
-            String rawPlayerDataList = in.readUTF();
-            plugin.Logger.debug("Received playerdatalist: " + rawPlayerDataList);
-            try {
-                List<PlayerData> playerDataList = Arrays
-                        .asList(GeyserVoice.objectMapper.readValue(rawPlayerDataList, PlayerData[].class));
-                for (PlayerData playerData : playerDataList) {
-                    playerData.DimensionId = serverName + "_" + playerData.DimensionId;
-                    plugin.playerDataList.put(playerData.PlayerId, playerData);
+        try {
+            ByteArrayDataInput in = ByteStreams.newDataInput(event.getData());
+            String subchannel = in.readUTF();
+            if (subchannel.equals("PlayerDataList")) {
+                String rawPlayerDataList = in.readUTF();
+                plugin.Logger.debug("Received playerdatalist: " + rawPlayerDataList);
+                try {
+                    List<PlayerData> playerDataList = Arrays
+                            .asList(GeyserVoice.objectMapper.readValue(rawPlayerDataList, PlayerData[].class));
+                    for (PlayerData playerData : playerDataList) {
+                        playerData.dimensionId = serverName + "_" + playerData.dimensionId;
+                        plugin.playerDataList.put(playerData.playerId, playerData);
+                    }
+                } catch (JsonProcessingException e) {
+                    plugin.Logger.debug("Failed to parse PlayerDataList: " + e.getMessage());
                 }
-            } catch (JsonProcessingException e) {
-            }
-        } else if (subchannel.equals("PlayerData")) {
-            PlayerData playerData = new PlayerData();
-            playerData.PlayerId = in.readUTF();
-            playerData.DimensionId = in.readUTF();
-            playerData.Location.x = in.readDouble();
-            playerData.Location.y = in.readDouble();
-            playerData.Location.z = in.readDouble();
-            playerData.Rotation = in.readDouble();
-            playerData.EchoFactor = in.readDouble();
-            playerData.Muffled = in.readBoolean();
-            playerData.IsDead = in.readBoolean();
+            } else if (subchannel.equals("PlayerData")) {
+                PlayerData playerData = new PlayerData();
+                playerData.playerId = in.readUTF();
+                playerData.dimensionId = in.readUTF();
+                
+                // Init LocationData if null (it should be based on new Payloads structure, but to be safe)
+                playerData.location = new io.greitan.avion.common.network.Payloads.LocationData();
+                
+                playerData.location.x = in.readDouble();
+                playerData.location.y = in.readDouble();
+                playerData.location.z = in.readDouble();
+                playerData.rotation = in.readDouble();
+                playerData.echoFactor = in.readDouble();
+                playerData.muffled = in.readBoolean();
+                playerData.isDead = in.readBoolean();
 
-            playerData.DimensionId = serverName + "_" + playerData.DimensionId;
-            plugin.playerDataList.put(playerData.PlayerId, playerData);
+                playerData.dimensionId = serverName + "_" + playerData.dimensionId;
+                plugin.playerDataList.put(playerData.playerId, playerData);
+            }
+        } catch (Exception e) {
+             plugin.Logger.error("Error handling plugin message: " + e.getMessage());
         }
 
         // Make sure to cancel the event after we finished handling it, else the player

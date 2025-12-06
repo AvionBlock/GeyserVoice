@@ -5,161 +5,155 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.greitan.avion.common.utils.BaseLogger;
+import io.greitan.avion.common.utils.Constants;
 import io.greitan.avion.common.network.Payloads.*;
 
 public class Network {
-    private static final ObjectMapper objectMapper = new ObjectMapper();
-    private static final HttpClient httpClient = HttpClient.newHttpClient();
+    public static final ObjectMapper objectMapper = new ObjectMapper();
+    private static final Duration TIMEOUT = Duration.ofSeconds(5);
+    private static final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(TIMEOUT)
+            .build();
     private final BaseLogger logger;
-
-    private static final String VERSION = "1.0.0";
 
     public <T extends BaseLogger> Network(T logger) {
         this.logger = logger;
     }
 
-    public MCCommPacket sendPostRequest(String url, MCCommPacket data) {
+    /**
+     * Sends an asynchronous POST request.
+     */
+    public CompletableFuture<MCCommPacket> sendPostRequestAsync(String url, MCCommPacket data) {
         try {
             String jsonData = objectMapper.writeValueAsString(data);
-            logger.debug("Request: " + jsonData);
-
+            
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
-                    .timeout(Duration.ofSeconds(5))
+                    .timeout(TIMEOUT)
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(jsonData))
                     .build();
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            int statusCode = response.statusCode();
-            String body = response.body();
+            return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                    .thenApply(response -> {
+                        int statusCode = response.statusCode();
+                        String body = response.body();
 
-            logger.debug("Response: " + body);
-
-            if (statusCode == 200) {
-                return objectMapper.readValue(body, MCCommPacket.class);
-            } else {
-                logger.error("Sending HTTP Packet Failed, Reason: HTTP_EXCEPTION, STATUS_CODE: " + statusCode);
-                return null;
-            }
+                        if (statusCode == 200) {
+                            try {
+                                return objectMapper.readValue(body, MCCommPacket.class);
+                            } catch (Exception e) {
+                                logger.error("Failed to parse response: " + e.getMessage());
+                                return null;
+                            }
+                        } else {
+                            logger.error("HTTP Packet Failed. Status: " + statusCode);
+                            return null;
+                        }
+                    })
+                    .exceptionally(e -> {
+                        String message = e.getMessage() != null ? e.getMessage() : e.toString();
+                        // Suppress common connection errors to avoid log spam during outages
+                        logger.error("Connection error: " + message);
+                        return null;
+                    });
         } catch (Exception e) {
-            String message = e.getMessage() != null ? e.getMessage() : e.toString();
-            logger.error("Can't connect to voice chat server! " + message);
+            logger.error("Failed to build request: " + e.getMessage());
+            return CompletableFuture.completedFuture(null);
+        }
+    }
+
+    /**
+     * Blocking wrapper for synchronous contexts (e.g. initialization).
+     */
+    public MCCommPacket sendPostRequest(String url, MCCommPacket data) {
+        try {
+            return sendPostRequestAsync(url, data).get(5, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            logger.error("Synchronous request failed: " + e.getMessage());
             return null;
         }
     }
 
     /**
      * Sends the login request to the server.
-     *
-     * @param link      HTTP POST link
-     * @param serverKey The server key
-     * @return Token if connected successfully, otherwise null.
      */
     public String sendLoginRequest(String link, String serverKey) {
-        LoginPacket loginPacket = new LoginPacket(serverKey, VERSION);
-
+        LoginPacket loginPacket = new LoginPacket(serverKey, Constants.VERSION);
         MCCommPacket response = sendPostRequest(link, loginPacket);
+        
         if (response != null) {
-            if (response.packetId() == PacketType.Accept.ordinal()) {
-                // Cast is safe because of PacketId check, but for records we can use pattern matching in future
+            if (response.getPacketId() == PacketType.Accept.ordinal()) {
                 if (response instanceof AcceptPacket acceptPacket) {
-                    return acceptPacket.token();
+                    return acceptPacket.getToken();
                 }
-                // Fallback if Jackson deserialized to a different subtype but ID matches (unlikely with proper setup)
                 AcceptPacket packetData = objectMapper.convertValue(response, AcceptPacket.class);
-                return packetData.token();
-            } else if (response.packetId() == PacketType.Deny.ordinal() || response instanceof DenyPacket) {
+                return packetData.getToken();
+            } else if (response.getPacketId() == PacketType.Deny.ordinal() || response instanceof DenyPacket) {
                 DenyPacket packetData = objectMapper.convertValue(response, DenyPacket.class);
-                logger.error("Login Denied. Server denied link request! Reason: " + packetData.reason());
+                logger.error("Login Denied: " + packetData.reason);
             }
         } else {
-            logger.error("Could not contact server. Please check if your IPAddress and Port are correct!");
+            logger.error("Could not contact server. Check IP and Port.");
         }
         return null;
     }
 
     /**
      * Sends the logout request to the server.
-     *
-     * @param link  HTTP POST link
-     * @param token The session token
      */
     public void sendLogoutRequest(String link, String token) {
         LogoutPacket logoutPacket = new LogoutPacket(token);
-        sendPostRequest(link, logoutPacket);
+        sendPostRequestAsync(link, logoutPacket); // Fire and forget
     }
 
     /**
      * Sends the bind request to the server.
-     *
-     * @param link       HTTP POST link
-     * @param token      The token from the login
-     * @param playerKey  The bind key for the player
-     * @param playerId   The unique but consistent ID of the player
-     * @param playerName The name of the player
-     * @return "SUCCESS" if binded successfully, otherwise null or reason for failure.
      */
     public String sendBindRequest(String link, String token, Integer playerKey, String playerId, String playerName) {
         BindPacket bindPacket = new BindPacket(token, playerId, playerKey, playerName);
-
         MCCommPacket bindStatus = sendPostRequest(link, bindPacket);
-        if (bindStatus == null)
-            return null;
+        
+        if (bindStatus == null) return null;
 
-        if (bindStatus.packetId() == PacketType.Accept.ordinal()) {
+        if (bindStatus.getPacketId() == PacketType.Accept.ordinal()) {
             return "SUCCESS";
         } else if (bindStatus instanceof DenyPacket denyPacket) {
-            logger.error("Binding " + playerName + " to " + playerKey + " failed. Reason: " + denyPacket.reason());
-            return denyPacket.reason();
+            logger.error("Binding " + playerName + " failed: " + denyPacket.reason);
+            return denyPacket.reason;
         }
         return null;
     }
 
     /**
      * Sends the disconnect request to the server.
-     *
-     * @param link       HTTP POST link
-     * @param token      The token from the login
-     * @param playerId   The unique but consistent ID of the player
-     * @param playerName The name of the player
-     * @return "SUCCESS" if disconnected successfully, otherwise null or reason for failure.
      */
     public String sendDisconnectRequest(String link, String token, String playerId, String playerName) {
-        DisconnectParticipantPacket disconnectParticipantPacket = new DisconnectParticipantPacket(token, playerId);
+        DisconnectParticipantPacket packet = new DisconnectParticipantPacket(token, playerId);
+        MCCommPacket status = sendPostRequest(link, packet);
+        
+        if (status == null) return null;
 
-        MCCommPacket disconnectStatus = sendPostRequest(link, disconnectParticipantPacket);
-        if (disconnectStatus == null)
-            return null;
-
-        if (disconnectStatus.packetId() == PacketType.Accept.ordinal()) {
+        if (status.getPacketId() == PacketType.Accept.ordinal()) {
             return "SUCCESS";
-        } else if (disconnectStatus instanceof DenyPacket denyPacket) {
-            logger.error("Disconnecting player " + playerName + " failed. Reason: " + denyPacket.reason());
-            return denyPacket.reason();
+        } else if (status instanceof DenyPacket denyPacket) {
+            logger.error("Disconnecting player " + playerName + " failed: " + denyPacket.reason);
+            return denyPacket.reason;
         }
         return null;
     }
 
     /**
      * Updates the voice chat settings.
-     *
-     * @param link              HTTP POST link
-     * @param token             The token from the login
-     * @param proximityDistance Proximity distance setting.
-     * @param proximityToggle   Proximity toggle setting.
-     * @param voiceEffects      Voice effects setting.
-     * @return True if settings were updated successfully, otherwise false.
      */
-    public boolean sendUpdateSettingsRequest(String link, String token, int proximityDistance, boolean proximityToggle,
-            boolean voiceEffects) {
-        SetDefaultSettingsPacket setDefaultSettingsPacket = new SetDefaultSettingsPacket(
-            token, proximityDistance, proximityToggle, voiceEffects
-        );
-
-        return sendPostRequest(link, setDefaultSettingsPacket) != null;
+    public boolean sendUpdateSettingsRequest(String link, String token, int proximityDistance, boolean proximityToggle, boolean voiceEffects) {
+        SetDefaultSettingsPacket packet = new SetDefaultSettingsPacket(token, proximityDistance, proximityToggle, voiceEffects);
+        return sendPostRequest(link, packet) != null;
     }
 }

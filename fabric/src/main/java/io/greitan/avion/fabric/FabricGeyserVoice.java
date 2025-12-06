@@ -1,7 +1,9 @@
 package io.greitan.avion.fabric;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.MinecraftServer;
 import org.slf4j.Logger;
@@ -10,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import io.greitan.avion.common.BaseGeyserVoice;
 import io.greitan.avion.common.network.Network;
 import io.greitan.avion.fabric.utils.FabricLogger;
+import io.greitan.avion.fabric.tasks.PositionsTask;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,6 +42,7 @@ public class FabricGeyserVoice implements ModInitializer, BaseGeyserVoice {
     private MinecraftServer server;
     public FabricLogger loggerWrapper = new FabricLogger();
     public Network network = new Network(loggerWrapper);
+    public PositionsTask positionsTask;
     
     // Config
     private Properties config = new Properties();
@@ -48,6 +52,7 @@ public class FabricGeyserVoice implements ModInitializer, BaseGeyserVoice {
     public void onInitialize() {
         instance = this;
         configPath = FabricLoader.getInstance().getConfigDir().resolve("GeyserVoice/config.properties");
+        positionsTask = new PositionsTask(this);
         
         LOGGER.info("Initializing GeyserVoice for Fabric...");
 
@@ -61,13 +66,53 @@ public class FabricGeyserVoice implements ModInitializer, BaseGeyserVoice {
             this.server = null;
         });
         
+        ServerTickEvents.END_SERVER_TICK.register(server -> {
+            if (positionsTask != null) {
+                positionsTask.run();
+            }
+        });
+
         net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             io.greitan.avion.fabric.commands.FabricVoiceCommand.register(dispatcher);
+        });
+        
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+             // Auto-bind check (Requires config lookup implementation)
+             // Since we use Properties, we can check config.getProperty("players." + name)
+             // Ideally we should abstract config access better, but for now:
+             String playerName = handler.getPlayer().getName().getString();
+             String keyStr = config.getProperty("players." + playerName);
+             if (keyStr != null) {
+                 try {
+                     int key = Integer.parseInt(keyStr);
+                     // Auto bind
+                     bind(key, handler.getPlayer().getUuid(), playerName);
+                     loggerWrapper.info("Auto-binding player " + playerName);
+                 } catch (NumberFormatException ignored) {}
+             }
+        });
+
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+            String playerName = handler.getPlayer().getName().getString();
+            if (playerBinds.containsKey(playerName)) {
+                // Notify voice server
+                if (isConnected && serverKey != null) {
+                    String link = "http://" + host + ":" + port;
+                    // Use same ID generation as bindFake
+                    String dummyId = java.util.UUID.nameUUIDFromBytes(playerName.getBytes()).toString();
+                    network.sendDisconnectRequest(link, token, dummyId, playerName);
+                }
+                playerBinds.remove(playerName);
+            }
         });
     }
 
     public static FabricGeyserVoice getInstance() {
         return instance;
+    }
+    
+    public MinecraftServer getServer() {
+        return server;
     }
 
     @Override
@@ -188,11 +233,11 @@ public class FabricGeyserVoice implements ModInitializer, BaseGeyserVoice {
         String result = network.sendBindRequest(link, token, bindKey, dummyId, name);
         playerBinds.put(name, false);
         if (result != null) {
-            if (result.equals("SUCCESS")) {
+            if ("SUCCESS".equals(result)) {
                 playerBinds.put(name, true);
                 loggerWrapper.info("Bound fake player " + name);
                 return true;
-            } else if (result.equals("Invalid Token!") && tries == 0) {
+            } else if ("Invalid Token!".equals(result) && tries == 0) {
                 loggerWrapper.info("Invalid Token detected, reconnecting...");
                 isConnected = reconnect(true);
                 return bindFake(bindKey, name, 1);
@@ -204,6 +249,37 @@ public class FabricGeyserVoice implements ModInitializer, BaseGeyserVoice {
     @Override
     public Boolean bindFake(int bindKey, String name) {
         return bindFake(bindKey, name, 0);
+    }
+
+    public Boolean bind(int playerKey, java.util.UUID uuid, String name, int tries) {
+        if (!isConnected || Objects.isNull(host) || Objects.isNull(serverKey))
+            return false;
+
+        if (playerBinds.containsKey(name) && playerBinds.get(name)) {
+            return true;
+        }
+
+        String link = "http://" + host + ":" + port;
+        String playerId = uuid.toString();
+
+        String result = network.sendBindRequest(link, token, playerKey, playerId, name);
+        playerBinds.put(name, false);
+        if (result != null) {
+            if ("SUCCESS".equals(result)) {
+                playerBinds.put(name, true);
+                loggerWrapper.info("Bound player " + name);
+                return true;
+            } else if ("Invalid Token!".equals(result) && tries == 0) {
+                loggerWrapper.info("Invalid Token detected, reconnecting...");
+                isConnected = reconnect(true);
+                return bind(playerKey, uuid, name, 1);
+            }
+        }
+        return false;
+    }
+
+    public Boolean bind(int playerKey, java.util.UUID uuid, String name) {
+        return bind(playerKey, uuid, name, 0);
     }
 
     @Override
@@ -222,14 +298,35 @@ public class FabricGeyserVoice implements ModInitializer, BaseGeyserVoice {
 
     @Override
     public void saveResource(String resourcePath) {
-        // Not implemented for Fabric basic
+        try {
+            Path path = configPath.getParent().resolve(resourcePath);
+            if (Files.exists(path)) return;
+            
+            if (!Files.exists(path.getParent())) {
+                Files.createDirectories(path.getParent());
+            }
+
+            try (var in = getClass().getClassLoader().getResourceAsStream(resourcePath)) {
+                if (in == null) {
+                    loggerWrapper.error("Could not find resource: " + resourcePath);
+                    return;
+                }
+                Files.copy(in, path);
+            }
+        } catch (IOException e) {
+            loggerWrapper.error("Failed to save resource " + resourcePath + ": " + e.getMessage());
+        }
     }
 
     private void saveDefaultConfig() {
+        // Ensure config directory exists
         try {
             if (!Files.exists(configPath.getParent())) {
                 Files.createDirectories(configPath.getParent());
             }
+            // Save default language file
+            saveResource("locale/en.yml");
+            
             if (!Files.exists(configPath)) {
                 config.setProperty("debug", "false");
                 config.setProperty("lang", "en");

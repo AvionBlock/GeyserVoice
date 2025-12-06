@@ -1,6 +1,6 @@
 plugins {
     id 'fabric-loom'
-    id 'io.github.goooler.shadow'
+    id 'com.gradleup.shadow'
 }
 
 dependencies {
@@ -8,6 +8,10 @@ dependencies {
     mappings "net.fabricmc:yarn:${project.yarn_mappings}"
     modImplementation "net.fabricmc:fabric-loader:${project.fabric_loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    implementation "net.kyori:adventure-api:4.17.0"
+    implementation "net.kyori:adventure-text-serializer-plain:4.17.0"
+    implementation "com.fasterxml.jackson.core:jackson-databind:${project.jackson_version}"
+    include "com.fasterxml.jackson.core:jackson-databind:${project.jackson_version}"
     
     implementation project(':common')
     shadow(project(':common'))
@@ -16,7 +20,8 @@ dependencies {
 shadowJar {
     configurations = [project.configurations.shadow]
     archiveClassifier.set('dev-shadow')
-    relocate 'io.greitan.avion.common', 'io.greitan.avion.fabric.common'
+    // relocation disabled due to ASM/Gradle 9 compatibility issues
+    // relocate 'io.greitan.avion.common', 'io.greitan.avion.fabric.common'
 }
 
 remapJar {

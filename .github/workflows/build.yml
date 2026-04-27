@@ -1,9 +1,14 @@
-name: Build and Archive
+name: Build
 
 on:
   push:
     branches:
       - main
+  pull_request:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -11,25 +16,35 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up JDK
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v4
         with:
-          distribution: "temurin"
+          distribution: temurin
           java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Make gradlew executable
         run: chmod +x gradlew
 
       - name: Build with Gradle
-        run: ./gradlew build
+        run: ./gradlew clean build --no-daemon
+
+      - name: Collect release artifacts
+        run: |
+          mkdir -p dist
+          find modules -path "*/build/libs/*.jar" \
+            ! -name "*-sources.jar" \
+            ! -name "*-thin.jar" \
+            ! -path "*/core/build/libs/*" \
+            -exec cp {} dist/ \;
 
       - name: Archive artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: geyser-voice-artifacts
-          path: |
-            modules/paper/build/libs/
-            modules/velocity/build/libs/
-            modules/bungeecord/build/libs/
+          name: geyservoice-build
+          path: dist/*.jar
+          if-no-files-found: error

@@ -33,10 +33,12 @@ processResources {
 }
 
 tasks.jar {
+    archiveBaseName.set("${rootProject.ext.pluginName}-paper")
     archiveClassifier.set('thin')
 }
 
 tasks.shadowJar {
+    archiveBaseName.set("${rootProject.ext.pluginName}-paper")
     archiveClassifier.set('')
 }
 

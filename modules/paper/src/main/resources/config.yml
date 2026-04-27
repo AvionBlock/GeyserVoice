@@ -7,9 +7,12 @@
     enabled: false
 
   voicecraft:
-    host: "127.0.0.1"
-    port: 9050
-    login-token: "__GENERATED_LOGIN_TOKEN__"
+    transport:
+      host: "127.0.0.1"
+      port: 9050
+      login-token: "__GENERATED_LOGIN_TOKEN__"
+    voice:
+      port: 1111
     auto-start: true
     shutdown-on-disable: true
     invariant-globalization: true

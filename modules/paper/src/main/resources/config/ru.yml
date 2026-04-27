@@ -7,11 +7,15 @@
     enabled: false # Включить, если этот Paper-сервер стоит за Velocity/Bungee
 
   voicecraft:
-    host: "127.0.0.1" # TCP-хост VoiceCraft
-    port: 9050 # TCP-порт VoiceCraft
-    login-token: "__GENERATED_LOGIN_TOKEN__" # LoginToken сервера VoiceCraft
+    transport:
+      host: "127.0.0.1" # TCP-хост VoiceCraft
+      port: 9050 # TCP-порт VoiceCraft
+      login-token: "__GENERATED_LOGIN_TOKEN__" # LoginToken сервера VoiceCraft
+    voice:
+      port: 1111 # Порт голосового сервера VoiceCraft
     auto-start: true # Автоматически запускать управляемый VoiceCraft
     shutdown-on-disable: true # Останавливать VoiceCraft при выключении плагина
+    invariant-globalization: true # Запускать .NET без системных ICU-библиотек
     ready-timeout-ms: 10000 # Сколько ждать запуска VoiceCraft
     install-directory: "voicecraft-runtime" # Папка для скачанных бинарников VoiceCraft
 

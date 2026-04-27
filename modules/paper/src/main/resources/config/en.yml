@@ -7,11 +7,15 @@
     enabled: false               # Enable when this Paper server is behind Velocity/Bungee
 
   voicecraft:
-    host: "127.0.0.1"            # VoiceCraft TCP host
-    port: 9050                   # VoiceCraft TCP port
-    login-token: "__GENERATED_LOGIN_TOKEN__"           # VoiceCraft LoginToken
+    transport:
+      host: "127.0.0.1"          # VoiceCraft TCP host
+      port: 9050                 # VoiceCraft TCP port
+      login-token: "__GENERATED_LOGIN_TOKEN__" # VoiceCraft LoginToken
+    voice:
+      port: 1111                 # Managed VoiceCraft voice port
     auto-start: true             # Start managed VoiceCraft automatically
     shutdown-on-disable: true    # Stop managed VoiceCraft when the plugin disables
+    invariant-globalization: true # Run .NET without system ICU packages
     ready-timeout-ms: 20000      # How long to wait for VoiceCraft startup
     install-directory: "voicecraft-runtime" # Folder for downloaded VoiceCraft binaries
 

@@ -33,6 +33,14 @@ import java.util.HashMap;
  * Main plugin class for GeyserVoice.
  */
 public class GeyserVoice extends JavaPlugin implements BaseGeyserVoice {
+    private static final String TRANSPORT_HOST_PATH = "config.voicecraft.transport.host";
+    private static final String TRANSPORT_PORT_PATH = "config.voicecraft.transport.port";
+    private static final String TRANSPORT_LOGIN_TOKEN_PATH = "config.voicecraft.transport.login-token";
+    private static final String LEGACY_HOST_PATH = "config.voicecraft.host";
+    private static final String LEGACY_PORT_PATH = "config.voicecraft.port";
+    private static final String LEGACY_LOGIN_TOKEN_PATH = "config.voicecraft.login-token";
+    private static final String MANAGED_VOICE_PORT_PATH = "config.voicecraft.voice.port";
+
     private static @Getter GeyserVoice instance;
     private @Getter boolean isConnected = false;
     private @Getter String host = "";
@@ -109,9 +117,9 @@ public class GeyserVoice extends JavaPlugin implements BaseGeyserVoice {
         }
         usesProxy = newUsesProxy;
 
-        host = getConfig().getString("config.voicecraft.host");
-        port = getConfig().getInt("config.voicecraft.port");
-        loginToken = getConfig().getString("config.voicecraft.login-token");
+        host = getTransportHost();
+        port = getTransportPort();
+        loginToken = getTransportLoginToken();
         int proximityDistance = getConfig().getInt("config.voice.proximity-distance");
         boolean proximityToggle = getConfig().getBoolean("config.voice.proximity-toggle");
         boolean voiceEffects = getConfig().getBoolean("config.voice.voice-effects");
@@ -150,9 +158,9 @@ public class GeyserVoice extends JavaPlugin implements BaseGeyserVoice {
      */
     public Boolean connect(String host, int port, String loginToken) {
         if (Objects.nonNull(host) && Objects.nonNull(loginToken)) {
-            getConfig().set("config.voicecraft.host", host);
-            getConfig().set("config.voicecraft.port", port);
-            getConfig().set("config.voicecraft.login-token", loginToken);
+            getConfig().set(TRANSPORT_HOST_PATH, host);
+            getConfig().set(TRANSPORT_PORT_PATH, port);
+            getConfig().set(TRANSPORT_LOGIN_TOKEN_PATH, loginToken);
             saveConfig();
             reloadConfig();
             reload();
@@ -396,5 +404,24 @@ public class GeyserVoice extends JavaPlugin implements BaseGeyserVoice {
     private InputStream openConfigTemplate(String templatePath) {
         InputStream input = getResource(templatePath);
         return input != null ? input : getResource("config/en.yml");
+    }
+
+    public int getManagedVoicePort() {
+        return getConfig().getInt(MANAGED_VOICE_PORT_PATH, 1111);
+    }
+
+    private String getTransportHost() {
+        String value = getConfig().getString(TRANSPORT_HOST_PATH);
+        return value != null ? value : getConfig().getString(LEGACY_HOST_PATH);
+    }
+
+    private int getTransportPort() {
+        int value = getConfig().getInt(TRANSPORT_PORT_PATH, -1);
+        return value > 0 ? value : getConfig().getInt(LEGACY_PORT_PATH);
+    }
+
+    private String getTransportLoginToken() {
+        String value = getConfig().getString(TRANSPORT_LOGIN_TOKEN_PATH);
+        return value != null ? value : getConfig().getString(LEGACY_LOGIN_TOKEN_PATH);
     }
 }

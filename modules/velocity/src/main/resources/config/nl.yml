@@ -4,9 +4,12 @@
   auto-reconnect: true # Opnieuw verbinden met VoiceCraft na verbindingsverlies
 
   voicecraft:
-    host: "127.0.0.1" # VoiceCraft TCP-host
-    port: 9050 # VoiceCraft TCP-poort
-    login-token: "__GENERATED_LOGIN_TOKEN__" # VoiceCraft LoginToken
+    transport:
+      host: "127.0.0.1" # VoiceCraft TCP-host
+      port: 9050 # VoiceCraft TCP-poort
+      login-token: "__GENERATED_LOGIN_TOKEN__" # VoiceCraft LoginToken
+    voice:
+      port: 1111 # VoiceCraft voice port
 
   voice:
     proximity-distance: 30 # Maximale spraakafstand

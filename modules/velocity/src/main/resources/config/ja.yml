@@ -4,9 +4,12 @@
   auto-reconnect: true # 切断時に VoiceCraft へ再接続します
 
   voicecraft:
-    host: "127.0.0.1" # VoiceCraft の TCP ホスト
-    port: 9050 # VoiceCraft の TCP ポート
-    login-token: "__GENERATED_LOGIN_TOKEN__" # VoiceCraft の LoginToken
+    transport:
+      host: "127.0.0.1" # VoiceCraft の TCP ホスト
+      port: 9050 # VoiceCraft の TCP ポート
+      login-token: "__GENERATED_LOGIN_TOKEN__" # VoiceCraft の LoginToken
+    voice:
+      port: 1111 # VoiceCraft voice port
 
   voice:
     proximity-distance: 30 # ボイスの最大距離

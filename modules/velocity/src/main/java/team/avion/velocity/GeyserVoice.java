@@ -44,6 +44,13 @@ import team.avion.velocity.utils.VelocityLogger;
 
 @Plugin(id = "geyservoice", name = "GeyserVoice", version = "0.0.0", description = "VoiceCraft bridge for Velocity", authors = { "0xAlpha" })
 public class GeyserVoice implements BaseGeyserVoice {
+    private static final String TRANSPORT_HOST_PATH = "config.voicecraft.transport.host";
+    private static final String TRANSPORT_PORT_PATH = "config.voicecraft.transport.port";
+    private static final String TRANSPORT_LOGIN_TOKEN_PATH = "config.voicecraft.transport.login-token";
+    private static final String LEGACY_HOST_PATH = "config.voicecraft.host";
+    private static final String LEGACY_PORT_PATH = "config.voicecraft.port";
+    private static final String LEGACY_LOGIN_TOKEN_PATH = "config.voicecraft.login-token";
+
     private final @Getter ProxyServer proxy;
     private final @Getter File dataFolder;
     private static VelocityYamlConfig config;
@@ -105,9 +112,9 @@ public class GeyserVoice implements BaseGeyserVoice {
         Logger.info(Language.getMessage(lang, "plugin-config-loaded"));
         Logger.info(Language.getMessage(lang, "plugin-command-executor"));
 
-        host = getConfig().getString("config.voicecraft.host");
-        port = getConfig().getInt("config.voicecraft.port");
-        loginToken = getConfig().getString("config.voicecraft.login-token");
+        host = getTransportHost();
+        port = getTransportPort();
+        loginToken = getTransportLoginToken();
         int proximityDistance = getConfig().getInt("config.voice.proximity-distance", 30);
         boolean proximityToggle = getConfig().getBoolean("config.voice.proximity-toggle", true);
         boolean voiceEffects = getConfig().getBoolean("config.voice.voice-effects", true);
@@ -139,9 +146,9 @@ public class GeyserVoice implements BaseGeyserVoice {
         }
 
         try {
-            getConfig().set("config.voicecraft.host", host);
-            getConfig().set("config.voicecraft.port", port);
-            getConfig().set("config.voicecraft.login-token", loginToken);
+            getConfig().set(TRANSPORT_HOST_PATH, host);
+            getConfig().set(TRANSPORT_PORT_PATH, port);
+            getConfig().set(TRANSPORT_LOGIN_TOKEN_PATH, loginToken);
             saveConfig();
             reload();
             return isConnected;
@@ -378,5 +385,20 @@ public class GeyserVoice implements BaseGeyserVoice {
     private InputStream openConfigTemplate(String language) {
         InputStream input = getClass().getClassLoader().getResourceAsStream("config/" + language + ".yml");
         return input != null ? input : getClass().getClassLoader().getResourceAsStream("config/en.yml");
+    }
+
+    private String getTransportHost() {
+        String value = getConfig().getString(TRANSPORT_HOST_PATH);
+        return value != null ? value : getConfig().getString(LEGACY_HOST_PATH);
+    }
+
+    private int getTransportPort() {
+        int value = getConfig().getInt(TRANSPORT_PORT_PATH, -1);
+        return value > 0 ? value : getConfig().getInt(LEGACY_PORT_PATH);
+    }
+
+    private String getTransportLoginToken() {
+        String value = getConfig().getString(TRANSPORT_LOGIN_TOKEN_PATH);
+        return value != null ? value : getConfig().getString(LEGACY_LOGIN_TOKEN_PATH);
     }
 }

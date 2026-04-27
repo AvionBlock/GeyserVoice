@@ -7,11 +7,15 @@
     enabled: false # この Paper サーバーが Velocity/Bungee 配下なら有効化します
 
   voicecraft:
-    host: "127.0.0.1" # VoiceCraft の TCP ホスト
-    port: 9050 # VoiceCraft の TCP ポート
-    login-token: "__GENERATED_LOGIN_TOKEN__" # VoiceCraft の LoginToken
+    transport:
+      host: "127.0.0.1" # VoiceCraft の TCP ホスト
+      port: 9050 # VoiceCraft の TCP ポート
+      login-token: "__GENERATED_LOGIN_TOKEN__" # VoiceCraft の LoginToken
+    voice:
+      port: 1111 # Managed VoiceCraft voice port
     auto-start: true # 管理対象 VoiceCraft を自動起動します
     shutdown-on-disable: true # プラグイン停止時に VoiceCraft を終了します
+    invariant-globalization: true # システム ICU なしで .NET を実行します
     ready-timeout-ms: 20000 # VoiceCraft 起動待ち時間
     install-directory: "voicecraft-runtime" # VoiceCraft バイナリの保存先
 

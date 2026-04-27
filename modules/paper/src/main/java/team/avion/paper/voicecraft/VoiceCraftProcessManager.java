@@ -200,6 +200,8 @@ public class VoiceCraftProcessManager {
             writeReleaseMarker(releaseMarker, releaseId);
         }
 
+        updateManagedServerProperties(installDirectory);
+
         if (!Files.exists(executablePath)) {
             plugin.Logger.error("Managed VoiceCraft executable was not found after extraction: " + executablePath);
             return null;
@@ -233,6 +235,22 @@ public class VoiceCraftProcessManager {
                 ? VoiceCraftRuntimeDefaults.EXECUTABLE_BASE_NAME + ".exe"
                 : VoiceCraftRuntimeDefaults.EXECUTABLE_BASE_NAME;
         return installDirectory.resolve(fileName).normalize();
+    }
+
+    private void updateManagedServerProperties(Path installDirectory) throws IOException {
+        Path serverPropertiesPath = installDirectory.resolve("config").resolve("ServerProperties.json").normalize();
+        if (!Files.exists(serverPropertiesPath)) {
+            plugin.Logger.warn("Managed VoiceCraft config file was not found: " + serverPropertiesPath);
+            return;
+        }
+
+        String content = Files.readString(serverPropertiesPath, StandardCharsets.UTF_8);
+        String updated = content.replaceFirst("\"Port\"\\s*:\\s*\\d+",
+                "\"Port\": " + plugin.getManagedVoicePort());
+        if (!updated.equals(content)) {
+            Files.writeString(serverPropertiesPath, updated, StandardCharsets.UTF_8,
+                    StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+        }
     }
 
     private void downloadAndExtractRelease(Path installDirectory, String assetName) throws IOException, InterruptedException {

@@ -24,8 +24,8 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v2
         with:
-          distribution: "adopt"
-          java-version: "17"
+          distribution: "temurin"
+          java-version: "21"
 
       - name: Make gradlew executable
         run: chmod +x gradlew
@@ -36,8 +36,11 @@ jobs:
       - name: Archive artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: geyser-voice-artifact
-          path: build/libs/
+          name: geyser-voice-artifacts
+          path: |
+            modules/paper/build/libs/
+            modules/velocity/build/libs/
+            modules/bungeecord/build/libs/
 
   publish_release:
     name: Publish release
@@ -54,8 +57,8 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: geyser-voice-artifact
-          path: build/libs/
+          name: geyser-voice-artifacts
+          path: release-artifacts/
 
       - name: Create release
         if: github.event.inputs.status == 'stable'
@@ -64,7 +67,7 @@ jobs:
           prerelease: false
           tag: ${{ github.event.inputs.tag }}
           artifacts: |
-            build/libs/GeyserVoice-*.jar
+            release-artifacts/**/*.jar
         env:
           GITHUB_REPOSITORY: AvionBlock/GeyserVoice
 
@@ -75,7 +78,7 @@ jobs:
           prerelease: true
           tag: ${{ github.event.inputs.tag }}
           artifacts: |
-            build/libs/GeyserVoice-*.jar
+            release-artifacts/**/*.jar
         env:
           GITHUB_REPOSITORY: AvionBlock/GeyserVoice
 
@@ -86,10 +89,10 @@ jobs:
         with:
             name: GeyserVoice ${{ github.event.inputs.tag }}
             project_id: WtPu56Wa
-            loaders: paper, spigot, bukkit, purpur, velocity, bungeecord
+            loaders: paper, purpur, velocity, bungeecord
             game_versions: 1.20.2:1.21.10
             version_number: ${{ github.event.inputs.tag }}
             featured: ${{ github.event.inputs.status == 'stable' }}
             version_type: ${{ github.event.inputs.status == 'stable' && 'release' || 'beta' }}
             files: |
-                ./build/libs/GeyserVoice-*.jar
+                ./release-artifacts/**/*.jar

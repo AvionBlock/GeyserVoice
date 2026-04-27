@@ -1,18 +1,26 @@
 ## GeyserVoice - Minecraft Proximity Voice Chat Plugin
 
-GeyserVoice is a Java plugin designed to enhance the multiplayer gaming experience on Minecraft servers by integrating the [VoiceCraft](https://github.com/SineVector241/VoiceCraft-MCBE_Proximity_Chat/) Proximity Chat application. The plugin facilitates cross-platform communication, allowing players on both Java and Bedrock editions to seamlessly engage in proximity-based voice conversations.
+GeyserVoice is a Java-side bridge for VoiceCraft built around `McApi TCP`. It now ships dedicated runtimes for `Paper`, `Velocity`, and `BungeeCord`, with direct Paper mode and proxy-relay mode for multi-server networks.
 
 ### Features
 
-- Cross-Platform Communication:
-  GeyserVoice bridges the gap between Minecraft Java Edition and Bedrock Edition, enabling players on different platforms to communicate through the VoiceCraft Proximity Chat system.
-
-- Immersive Proximity Chat:
-  Experience a more immersive and realistic gameplay environment with proximity-based voice chat. Engage in conversations with nearby players, enhancing teamwork and coordination.
+- `McApi TCP` transport only for VoiceCraft communication
+- managed VoiceCraft runtime download/startup on direct Paper servers
+- proxy relay mode for `Velocity` and `BungeeCord`
+- server-side positioning updates from each Paper backend through the proxy
 
 ### How It Works
 
-Installation: Simply install the GeyserVoice plugin on your Minecraft Java server. Make sure to follow the setup instructions to integrate it seamlessly with the VoiceCraft Proximity Chat application.
+Direct Paper mode:
+- install GeyserVoice on the Paper server
+- let the plugin download/start VoiceCraft locally if desired
+- the Paper plugin connects to VoiceCraft over `McApi TCP`
+
+Proxy mode:
+- install GeyserVoice on each Paper backend and on the proxy
+- enable `config.server-behind-proxy: true` on the Paper backends
+- the proxy plugin owns the VoiceCraft connection
+- backend Paper servers stream player snapshots to the proxy through plugin messages
 
 ### Getting Started
 
@@ -26,6 +34,8 @@ We welcome contributions from the community to improve and expand the functional
 
 GeyserVoice is licensed under the MIT License. Feel free to use, modify, and distribute the plugin in accordance with the terms of the license.
 
-### Proxy server support
+### Status
 
-GeyserVoice also supports usage with Velocity and Bungeecord networks. Just install the .jar on your proxy server and on your paper server(s). Be sure to edit the config of the paper server(s) to set `server-behind-proxy` to `true` and then reload using `voice reload`. P.s. You don't need to set the server address, port and keys on the paper server(s), this is only needed on the proxy server.
+Current supported runtime paths:
+- `Paper -> McApi TCP -> VoiceCraft`
+- `Paper -> Proxy relay -> McApi TCP -> VoiceCraft`

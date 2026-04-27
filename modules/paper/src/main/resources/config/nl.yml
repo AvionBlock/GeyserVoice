@@ -1,0 +1,30 @@
+﻿config:
+  debug: false # Extra debuglogging inschakelen
+  lang: "system" # system, en, ru, nl, ja
+  auto-reconnect: true # Opnieuw verbinden met VoiceCraft na verbindingsverlies
+
+  proxy:
+    enabled: false # Inschakelen als deze Paper-server achter Velocity/Bungee staat
+
+  voicecraft:
+    host: "127.0.0.1" # VoiceCraft TCP-host
+    port: 9050 # VoiceCraft TCP-poort
+    login-token: "__GENERATED_LOGIN_TOKEN__" # VoiceCraft LoginToken
+    auto-start: true # Beheerde VoiceCraft automatisch starten
+    shutdown-on-disable: true # VoiceCraft stoppen als de plugin uitschakelt
+    ready-timeout-ms: 20000 # Hoe lang op het opstarten van VoiceCraft wachten
+    install-directory: "voicecraft-runtime" # Map voor gedownloade VoiceCraft binaries
+
+  voice:
+    proximity-distance: 30 # Maximale spraakafstand
+    proximity-toggle: true # Proximity-verwerking inschakelen
+    voice-effects: true # Grot- en watereffecten inschakelen
+
+    not-in-voice-symbol: "\u2727" # Placeholder-symbool als een speler niet gekoppeld is
+    in-voice-symbol: "\u2726" # Placeholder-symbool als een speler gekoppeld is
+
+    send-bind-message: true # Show a message when a player links to VoiceCraft
+    send-disconnect-message: true # Show a message when a player leaves voice chat
+    send-voicecraft-disconnect-message: true # Show a message when the VoiceCraft connection closes
+    send-connection-lost-message: true # Show a message when the VoiceCraft connection is lost
+    position-update-interval-ticks: 5 # Positie-update-interval in ticks

@@ -16,8 +16,8 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v2
         with:
-          distribution: "adopt"
-          java-version: "17"
+          distribution: "temurin"
+          java-version: "21"
 
       - name: Make gradlew executable
         run: chmod +x gradlew
@@ -28,5 +28,8 @@ jobs:
       - name: Archive artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: geyser-voice-artifact
-          path: build/libs/
+          name: geyser-voice-artifacts
+          path: |
+            modules/paper/build/libs/
+            modules/velocity/build/libs/
+            modules/bungeecord/build/libs/

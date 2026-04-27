@@ -1,0 +1,30 @@
+﻿config:
+  debug: false # Включить дополнительное логирование
+  lang: "system" # system, en, ru, nl, ja
+  auto-reconnect: true # Переподключаться к VoiceCraft после потери соединения
+
+  proxy:
+    enabled: false # Включить, если этот Paper-сервер стоит за Velocity/Bungee
+
+  voicecraft:
+    host: "127.0.0.1" # TCP-хост VoiceCraft
+    port: 9050 # TCP-порт VoiceCraft
+    login-token: "__GENERATED_LOGIN_TOKEN__" # LoginToken сервера VoiceCraft
+    auto-start: true # Автоматически запускать управляемый VoiceCraft
+    shutdown-on-disable: true # Останавливать VoiceCraft при выключении плагина
+    ready-timeout-ms: 10000 # Сколько ждать запуска VoiceCraft
+    install-directory: "voicecraft-runtime" # Папка для скачанных бинарников VoiceCraft
+
+  voice:
+    proximity-distance: 30 # Максимальная дистанция голоса
+    proximity-toggle: true # Включить обработку proximity
+    voice-effects: true # Включить эффекты пещеры и воды
+
+    not-in-voice-symbol: "\u2727" # Символ плейсхолдера, когда игрок не привязан
+    in-voice-symbol: "\u2726" # Символ плейсхолдера, когда игрок привязан
+
+    send-bind-message: true           # Show a message when a player links to VoiceCraft
+    send-disconnect-message: true     # Show a message when a player leaves voice chat
+    send-voicecraft-disconnect-message: true # Show a message when the VoiceCraft connection closes
+    send-connection-lost-message: true # Show a message when the VoiceCraft connection is lost
+    position-update-interval-ticks: 5 # Интервал обновления позиций в тиках

@@ -1,0 +1,46 @@
+plugins {
+    id 'com.gradleup.shadow' version '9.4.1'
+}
+
+description = 'Velocity adapter for GeyserVoice.'
+
+dependencies {
+    implementation project(':core')
+    implementation 'org.spongepowered:configurate-yaml:4.2.0'
+    compileOnly('com.velocitypowered:velocity-api:3.4.0-SNAPSHOT')
+    annotationProcessor('com.velocitypowered:velocity-api:3.4.0-SNAPSHOT')
+    compileOnly('org.projectlombok:lombok:1.18.44')
+    annotationProcessor('org.projectlombok:lombok:1.18.44')
+}
+
+processResources {
+    inputs.properties([
+        id         : 'geyservoice',
+        name       : rootProject.ext.pluginName,
+        version    : project.version,
+        description: rootProject.description,
+        author     : rootProject.ext.pluginAuthor
+    ])
+
+    filesMatching('velocity-plugin.json') {
+        expand(
+            id: 'geyservoice',
+            name: rootProject.ext.pluginName,
+            version: project.version,
+            description: rootProject.description,
+            author: rootProject.ext.pluginAuthor
+        )
+    }
+}
+
+tasks.jar {
+    archiveClassifier.set('thin')
+}
+
+tasks.shadowJar {
+    archiveClassifier.set('')
+}
+
+tasks.build {
+    dependsOn tasks.shadowJar
+}

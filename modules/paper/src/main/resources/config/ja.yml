@@ -1,0 +1,30 @@
+﻿config:
+  debug: false # 追加のデバッグログを有効化します
+  lang: "system" # system, en, ru, nl, ja
+  auto-reconnect: true # 切断時に VoiceCraft へ再接続します
+
+  proxy:
+    enabled: false # この Paper サーバーが Velocity/Bungee 配下なら有効化します
+
+  voicecraft:
+    host: "127.0.0.1" # VoiceCraft の TCP ホスト
+    port: 9050 # VoiceCraft の TCP ポート
+    login-token: "__GENERATED_LOGIN_TOKEN__" # VoiceCraft の LoginToken
+    auto-start: true # 管理対象 VoiceCraft を自動起動します
+    shutdown-on-disable: true # プラグイン停止時に VoiceCraft を終了します
+    ready-timeout-ms: 20000 # VoiceCraft 起動待ち時間
+    install-directory: "voicecraft-runtime" # VoiceCraft バイナリの保存先
+
+  voice:
+    proximity-distance: 30 # ボイスの最大距離
+    proximity-toggle: true # 距離ベース処理を有効化します
+    voice-effects: true # 洞窟/水中エフェクトを有効化します
+
+    not-in-voice-symbol: "\u2727" # 未リンク時のプレースホルダー記号
+    in-voice-symbol: "\u2726" # リンク済み時のプレースホルダー記号
+
+    send-bind-message: true # Show a message when a player links to VoiceCraft
+    send-disconnect-message: true # Show a message when a player leaves voice chat
+    send-voicecraft-disconnect-message: true # Show a message when the VoiceCraft connection closes
+    send-connection-lost-message: true # Show a message when the VoiceCraft connection is lost
+    position-update-interval-ticks: 5 # 位置更新間隔（tick）

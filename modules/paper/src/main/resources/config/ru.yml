@@ -6,6 +6,13 @@
   proxy:
     enabled: false # Включить, если этот Paper-сервер стоит за Velocity/Bungee
 
+  adapters:
+    plasmo:
+      enabled: false # Включить совместимость с клиентом Plasmo Voice
+      bind-host: "0.0.0.0" # UDP-адрес для Plasmo-клиентов
+      advertised-host: "0.0.0.0" # Хост для клиентов; 0.0.0.0 означает адрес Minecraft-сервера
+      port: 24454 # UDP-порт для Plasmo-клиентов
+
   voicecraft:
     transport:
       host: "127.0.0.1" # TCP-хост VoiceCraft

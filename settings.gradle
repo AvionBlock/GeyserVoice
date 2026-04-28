@@ -1,10 +1,14 @@
 rootProject.name = 'GeyserVoice'
 include 'core'
+include 'adapter-api'
+include 'adapter-plasmo-protocol'
 include 'paper'
 include 'velocity'
 include 'bungeecord'
 
 project(':core').projectDir = file('modules/core')
+project(':adapter-api').projectDir = file('modules/adapter-api')
+project(':adapter-plasmo-protocol').projectDir = file('modules/adapter-plasmo-protocol')
 project(':paper').projectDir = file('modules/paper')
 project(':velocity').projectDir = file('modules/velocity')
 project(':bungeecord').projectDir = file('modules/bungeecord')

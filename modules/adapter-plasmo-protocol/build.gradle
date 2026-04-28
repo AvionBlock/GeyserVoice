@@ -1,0 +1,5 @@
+description = 'Plasmo Voice wire protocol support for GeyserVoice adapters.'
+
+dependencies {
+    api project(':adapter-api')
+}

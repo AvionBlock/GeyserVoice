@@ -7,15 +7,21 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalInt;
 
 import org.bukkit.entity.Player;
 
+import team.avion.adapter.VoiceCraftAudioBridge;
 import team.avion.paper.GeyserVoice;
 import team.avion.proxy.ProxyPlayerSnapshot;
 import team.avion.protocol.McApiTcpClient;
 import team.avion.protocol.McPackets.AcceptResponsePacket;
 import team.avion.protocol.McPackets.ClearEffectsRequestPacket;
+import team.avion.protocol.McPackets.CreateEntityRequestPacket;
+import team.avion.protocol.McPackets.CreateEntityResponsePacket;
 import team.avion.protocol.McPackets.DenyResponsePacket;
+import team.avion.protocol.McPackets.DestroyEntityRequestPacket;
+import team.avion.protocol.McPackets.EntityAudioRequestPacket;
 import team.avion.protocol.McPackets.McApiPacket;
 import team.avion.protocol.McPackets.OnEntityDestroyedPacket;
 import team.avion.protocol.McPackets.OnNetworkEntityCreatedPacket;
@@ -32,10 +38,11 @@ import team.avion.protocol.McPackets.SetEntityNameRequestPacket;
 import team.avion.protocol.McPackets.SetEntityPositionRequestPacket;
 import team.avion.protocol.McPackets.SetEntityRotationRequestPacket;
 import team.avion.protocol.McPackets.SetEntityWorldIdRequestPacket;
+import team.avion.protocol.McProtocolEnums.CreateEntityResponseCode;
 import team.avion.protocol.McProtocolTypes.Vector2;
 import team.avion.protocol.McProtocolTypes.Vector3;
 
-public final class PaperVoiceCraftSessionManager {
+public final class PaperVoiceCraftSessionManager implements VoiceCraftAudioBridge {
     private static final int EFFECT_BITMASK_PROXIMITY = 1;
 
     private final GeyserVoice plugin;
@@ -99,6 +106,80 @@ public final class PaperVoiceCraftSessionManager {
 
     public synchronized String getSessionToken() {
         return client.getSessionToken();
+    }
+
+    public synchronized OptionalInt getBoundEntityId(String playerName) {
+        BoundEntity boundEntity = boundEntitiesByPlayerName.get(playerName);
+        return boundEntity == null ? OptionalInt.empty() : OptionalInt.of(boundEntity.entityId());
+    }
+
+    public synchronized OptionalInt createEntityForPlayer(Player player) {
+        BoundEntity existing = boundEntitiesByPlayerName.get(player.getName());
+        if (existing != null) {
+            return OptionalInt.of(existing.entityId());
+        }
+        if (!client.isConnected()) {
+            return OptionalInt.empty();
+        }
+
+        String requestId = java.util.UUID.randomUUID().toString();
+        CreateEntityRequestPacket request = new CreateEntityRequestPacket();
+        request.RequestId = requestId;
+        request.WorldId = getDimensionId(player);
+        request.Name = player.getName();
+        request.Muted = false;
+        request.Deafened = false;
+        request.TalkBitmask = 0xFFFF;
+        request.ListenBitmask = 0xFFFF;
+        request.EffectBitmask = getCurrentEffectBitmask();
+        request.Position = new Vector3((float) player.getLocation().getX(), (float) player.getLocation().getY(),
+                (float) player.getLocation().getZ());
+        request.Rotation = new Vector2(player.getLocation().getPitch(), player.getLocation().getYaw());
+        request.CaveFactor = voiceEffects ? (float) plugin.getPositionsTask().getCaveDensity(player) : 0.0f;
+        request.MuffleFactor = voiceEffects && player.isInWater() ? 1.0f : 0.0f;
+
+        for (McApiPacket response : client.exchange(List.of(request))) {
+            if (response instanceof CreateEntityResponsePacket created
+                    && requestId.equals(created.RequestId)
+                    && created.ResponseCode == CreateEntityResponseCode.OK) {
+                boundEntitiesByPlayerName.put(player.getName(), new BoundEntity(player.getName(), created.Id,
+                        player.getUniqueId().toString(), player.getUniqueId().toString(), "java",
+                        getDimensionId(player), getCurrentEffectBitmask()));
+                plugin.getPlayerBinds().put(player.getName(), true);
+                return OptionalInt.of(created.Id);
+            }
+            processPackets(List.of(response));
+        }
+        return OptionalInt.empty();
+    }
+
+    public synchronized void destroyEntityForPlayer(String playerName) {
+        BoundEntity boundEntity = boundEntitiesByPlayerName.remove(playerName);
+        if (boundEntity == null || !client.isConnected()) {
+            plugin.getPlayerBinds().remove(playerName);
+            return;
+        }
+
+        DestroyEntityRequestPacket packet = new DestroyEntityRequestPacket();
+        packet.RequestId = java.util.UUID.randomUUID().toString();
+        packet.Id = boundEntity.entityId();
+        processPackets(client.exchange(List.of(packet)));
+        plugin.getPlayerBinds().remove(playerName);
+    }
+
+    @Override
+    public synchronized void sendEntityAudio(int entityId, int timestamp, float loudness, byte[] opusFrame) {
+        if (!client.isConnected() || opusFrame == null || opusFrame.length == 0) {
+            return;
+        }
+
+        EntityAudioRequestPacket packet = new EntityAudioRequestPacket();
+        packet.Id = entityId;
+        packet.Timestamp = timestamp;
+        packet.FrameLoudness = loudness;
+        packet.Length = opusFrame.length;
+        packet.Data = opusFrame;
+        processPackets(client.exchange(List.of(packet)));
     }
 
     public synchronized boolean updateSettings(int proximityDistance, boolean proximityToggle, boolean voiceEffects) {

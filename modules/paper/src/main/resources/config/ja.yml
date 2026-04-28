@@ -6,6 +6,13 @@
   proxy:
     enabled: false # この Paper サーバーが Velocity/Bungee 配下なら有効化します
 
+  adapters:
+    plasmo:
+      enabled: false # Plasmo Voiceクライアント互換を有効化
+      bind-host: "0.0.0.0" # Plasmoクライアント用UDPバインドアドレス
+      advertised-host: "0.0.0.0" # クライアントへ送るホスト。0.0.0.0はMinecraftサーバーホストを使用
+      port: 24454 # Plasmoクライアント用UDPポート
+
   voicecraft:
     transport:
       host: "127.0.0.1" # VoiceCraft の TCP ホスト

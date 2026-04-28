@@ -6,6 +6,13 @@
   proxy:
     enabled: false # Inschakelen als deze Paper-server achter Velocity/Bungee staat
 
+  adapters:
+    plasmo:
+      enabled: false # Plasmo Voice-clientcompatibiliteit inschakelen
+      bind-host: "0.0.0.0" # UDP-bindadres voor Plasmo-clients
+      advertised-host: "0.0.0.0" # Host voor clients; 0.0.0.0 gebruikt de Minecraft-serverhost
+      port: 24454 # UDP-poort voor Plasmo-clients
+
   voicecraft:
     transport:
       host: "127.0.0.1" # VoiceCraft TCP-host

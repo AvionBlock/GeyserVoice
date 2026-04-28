@@ -1,0 +1,5 @@
+description = 'Adapter API for optional voice client compatibility layers.'
+
+dependencies {
+    api project(':core')
+}

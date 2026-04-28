@@ -13,6 +13,8 @@ import org.bukkit.scheduler.BukkitTask;
 import team.avion.common.BaseGeyserVoice;
 import team.avion.common.config.ConfigTemplateWriter;
 import team.avion.common.localization.PluginLocalization;
+import team.avion.adapter.AdapterContext;
+import team.avion.paper.adapters.plasmo.PaperPlasmoVoiceAdapter;
 import team.avion.paper.commands.VoiceCommand;
 import team.avion.paper.listeners.*;
 import team.avion.paper.tasks.PositionsTask;
@@ -54,6 +56,7 @@ public class GeyserVoice extends JavaPlugin implements BaseGeyserVoice {
     private @Getter VoiceCraftProcessManager voiceCraftProcessManager;
     private @Getter PaperVoiceCraftSessionManager sessionManager;
     private @Getter PositionsTask positionsTask;
+    private PaperPlasmoVoiceAdapter plasmoVoiceAdapter;
 
     private BukkitTask taskRunner;
 
@@ -69,6 +72,7 @@ public class GeyserVoice extends JavaPlugin implements BaseGeyserVoice {
         reloadConfig();
         voiceCraftProcessManager = new VoiceCraftProcessManager(this);
         sessionManager = new PaperVoiceCraftSessionManager(this);
+        plasmoVoiceAdapter = new PaperPlasmoVoiceAdapter(this);
 
         lang = resolveConfiguredLanguage();
         int positionTaskInterval = getConfig().getInt("config.voice.position-update-interval-ticks", 1);
@@ -97,6 +101,7 @@ public class GeyserVoice extends JavaPlugin implements BaseGeyserVoice {
         if (voiceCraftProcessManager != null) {
             voiceCraftProcessManager.shutdown();
         }
+        stopPlasmoAdapter();
         getServer().getMessenger().unregisterOutgoingPluginChannel(this);
         getServer().getMessenger().unregisterIncomingPluginChannel(this);
     }
@@ -146,6 +151,7 @@ public class GeyserVoice extends JavaPlugin implements BaseGeyserVoice {
         taskRunner = positionsTask.runTaskTimer(this, 1, positionTaskInterval);
 
         updateSettings(proximityDistance, proximityToggle, voiceEffects);
+        reloadPlasmoAdapter();
     }
 
     /**
@@ -423,5 +429,29 @@ public class GeyserVoice extends JavaPlugin implements BaseGeyserVoice {
     private String getTransportLoginToken() {
         String value = getConfig().getString(TRANSPORT_LOGIN_TOKEN_PATH);
         return value != null ? value : getConfig().getString(LEGACY_LOGIN_TOKEN_PATH);
+    }
+
+    private void reloadPlasmoAdapter() {
+        stopPlasmoAdapter();
+        if (!getConfig().getBoolean("config.adapters.plasmo.enabled", false)) {
+            return;
+        }
+
+        try {
+            plasmoVoiceAdapter.start(new AdapterContext(Logger, getDataFolder().toPath(), sessionManager));
+        } catch (Exception exception) {
+            Logger.error("Failed to start Plasmo Voice adapter: " + exception.getMessage());
+        }
+    }
+
+    private void stopPlasmoAdapter() {
+        if (plasmoVoiceAdapter == null) {
+            return;
+        }
+        try {
+            plasmoVoiceAdapter.stop();
+        } catch (Exception exception) {
+            Logger.warn("Failed to stop Plasmo Voice adapter: " + exception.getMessage());
+        }
     }
 }

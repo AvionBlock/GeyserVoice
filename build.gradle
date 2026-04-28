@@ -1,111 +1,67 @@
 plugins {
-    id 'java'
-    id 'io.github.goooler.shadow' version '8.1.8'
-    id 'net.kyori.blossom' version '2.1.0'
+    id 'base'
 }
 
-group = 'io.greitan'
-version = project.hasProperty('VERSION') ? project.VERSION : 'UNKNOWN'
-description = "Plugin that adds support for using VoiceCraft on Java servers."
+group = 'team.avion'
+version = project.hasProperty('VERSION') ? project.VERSION : '0.1.0-SNAPSHOT'
+description = 'Plugin that adds support for using VoiceCraft on Java servers.'
 
-repositories {
-    mavenCentral()
-    maven {
-        name = "CodeMC"
-        url = uri("https://repo.codemc.io/repository/maven-public/")
-    }
-    maven {
-        name = "PaperMC"
-        url = "https://repo.papermc.io/repository/maven-public/"
-    }
-    maven {
-        name = "PlaceholderAPI"
-        url = 'https://repo.extendedclip.com/content/repositories/placeholderapi/'
-    }
-    maven {
-        name = "Jitpack"
-        url = 'https://jitpack.io'
-    }
-    maven {
-        name = "Bungeecord"
-        url 'https://oss.sonatype.org/content/repositories/snapshots'
-    }
+ext {
+    pluginName = 'GeyserVoice'
+    pluginUrl = 'https://geyservoice.avion.team'
+    pluginAuthor = 'lil-jon-crunk'
+    javaTarget = JavaVersion.VERSION_21
+    voiceCraft = [
+        githubRepository   : 'AvionBlock/VoiceCraft',
+        release            : 'latest',
+        installDirectory   : 'voicecraft-runtime',
+        executableBaseName : 'VoiceCraft.Server',
+        protocolMajor      : 1,
+        protocolMinor      : 6,
+        protocolPatch      : 0
+    ]
 }
 
-dependencies {
-    compileOnly 'dev.folia:folia-api:1.20.2-R0.1-SNAPSHOT'
-    compileOnly 'io.papermc.paper:paper-api:1.20.2-R0.1-SNAPSHOT'
-    compileOnly 'com.velocitypowered:velocity-api:3.3.0-SNAPSHOT'
-    annotationProcessor 'com.velocitypowered:velocity-api:3.3.0-SNAPSHOT'
-    compileOnly 'net.md-5:bungeecord-api:1.20-R0.2'
-    
-    compileOnly 'me.clip:placeholderapi:2.11.6'
-    compileOnly 'org.projectlombok:lombok:1.18.30'
-    annotationProcessor 'org.projectlombok:lombok:1.18.30'
-    
-    implementation('com.fasterxml.jackson.core:jackson-databind:2.15.2')
-    implementation('com.fasterxml.jackson.core:jackson-core:2.15.2')
-    implementation("com.github.simplix-softworks:simplixstorage:3.2.3")
-}
+allprojects {
+    group = rootProject.group
+    version = rootProject.version
 
-sourceSets {
-    main {
-        blossom {
-            javaSources {
-                property("name", "GeyserVoice")
-                property("version", version.toString())
-                property("description", description)
-                property("url", "https://uninode.de")
-            }
-            resources {
-                property("name", "GeyserVoice")
-                property("version", version.toString())
-                property("description", description)
-                property("url", "https://uninode.de")
-            }
+    repositories {
+        mavenCentral()
+        maven {
+            name = "PaperMC"
+            url = uri("https://repo.papermc.io/repository/maven-public/")
+        }
+        maven {
+            name = "PlaceholderAPI"
+            url = uri("https://repo.extendedclip.com/releases/")
+        }
+        maven {
+            name = "Bungeecord"
+            url = uri("https://oss.sonatype.org/content/repositories/snapshots")
         }
     }
 }
 
-tasks.withType(JavaCompile) {
-    options.encoding = 'UTF-8'
-}
+subprojects {
+    apply plugin: 'java-library'
 
-tasks.withType(Javadoc) {
-    options.encoding = 'UTF-8'
-    options.charSet = 'UTF-8'
-}
+    java {
+        sourceCompatibility = rootProject.ext.javaTarget
+        targetCompatibility = rootProject.ext.javaTarget
+        withSourcesJar()
+    }
 
-tasks.withType(Test) {
-    systemProperty 'file.encoding', 'UTF-8'
-}
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+    }
 
-java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-}
+    tasks.withType(Javadoc).configureEach {
+        options.encoding = 'UTF-8'
+        options.charSet = 'UTF-8'
+    }
 
-shadowJar {
-    archiveClassifier.set('all')
-    relocate 'com.tcoded.folialib', 'io.greitan.avion.folialib' 
-}
-
-task deleteUnusableJar(type: Delete) {
-    doLast {
-        file("build/libs").listFiles().each { File file ->
-            if (file.name.endsWith(".jar") && !file.name.contains("-all")) {
-                file.delete()
-            }
-        }
+    tasks.withType(Test).configureEach {
+        systemProperty 'file.encoding', 'UTF-8'
     }
 }
-
-task copyToTestServer(type: Copy) {
-    from shadowJar
-    into "D:\\JavaTest\\plugins"
-}
-copyToTestServer.dependsOn shadowJar
-
-build.finalizedBy shadowJar
-shadowJar.finalizedBy deleteUnusableJar
-if (project.hasProperty('DEV')) shadowJar.finalizedBy copyToTestServer

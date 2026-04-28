@@ -1,0 +1,23 @@
+﻿config:
+  debug: false # Enable additional debug logging
+  lang: "system" # system, en, ru, nl, ja
+  auto-reconnect: true # Reconnect to VoiceCraft after a dropped connection
+
+  voicecraft:
+    transport:
+      host: "127.0.0.1" # VoiceCraft TCP host
+      port: 9050 # VoiceCraft TCP port
+      login-token: "__GENERATED_LOGIN_TOKEN__" # VoiceCraft LoginToken
+    voice:
+      port: 1111 # VoiceCraft voice port
+
+  voice:
+    proximity-distance: 30 # Maximum voice distance
+    proximity-toggle: true # Enable proximity processing
+    voice-effects: true # Enable cave/water voice effects
+
+    send-bind-message: true # Show a message when a player links to VoiceCraft
+    send-disconnect-message: true # Show a message when a player leaves voice chat
+    send-voicecraft-disconnect-message: true # Show a message when the VoiceCraft connection closes
+    send-connection-lost-message: true # Show a message when the VoiceCraft connection is lost
+    position-update-interval-ticks: 5 # Position update interval in ticks

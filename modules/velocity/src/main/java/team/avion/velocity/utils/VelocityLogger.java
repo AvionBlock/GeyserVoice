@@ -1,0 +1,48 @@
+package team.avion.velocity.utils;
+
+import com.velocitypowered.api.proxy.ConsoleCommandSource;
+
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import team.avion.common.utils.BaseLogger;
+import team.avion.velocity.GeyserVoice;
+
+public class VelocityLogger extends BaseLogger {
+    @Override
+    public void log(Component msg) {
+        console().sendMessage(prefix().append(msg));
+    }
+
+    @Override
+    public void info(String msg) {
+        console().sendMessage(prefix().append(Component.text(msg).color(NamedTextColor.WHITE).decorate(TextDecoration.BOLD)));
+    }
+
+    @Override
+    public void warn(String msg) {
+        console().sendMessage(prefix().append(Component.text(msg).color(NamedTextColor.YELLOW).decorate(TextDecoration.BOLD)));
+    }
+
+    @Override
+    public void error(String msg) {
+        console().sendMessage(prefix().append(Component.text(msg).color(NamedTextColor.RED).decorate(TextDecoration.BOLD)));
+    }
+
+    @Override
+    public void debug(String msg) {
+        if (GeyserVoice.getConfig().getBoolean("config.debug", false)) {
+            console().sendMessage(prefix().append(Component.text(msg).color(NamedTextColor.BLUE).decorate(TextDecoration.BOLD)));
+        }
+    }
+
+    private ConsoleCommandSource console() {
+        return GeyserVoice.getInstance().getProxy().getConsoleCommandSource();
+    }
+
+    private Component prefix() {
+        return Component.text("[").color(NamedTextColor.WHITE).decorate(TextDecoration.BOLD)
+                .append(Component.text("GeyserVoice").color(NamedTextColor.LIGHT_PURPLE).decorate(TextDecoration.BOLD))
+                .append(Component.text("] ").color(NamedTextColor.WHITE).decorate(TextDecoration.BOLD));
+    }
+}

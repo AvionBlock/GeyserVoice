@@ -1,0 +1,47 @@
+plugins {
+    id 'com.gradleup.shadow' version '9.4.1'
+}
+
+description = 'Paper adapter for GeyserVoice.'
+
+dependencies {
+    implementation project(':core')
+    compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
+    compileOnly('me.clip:placeholderapi:2.12.2')
+    compileOnly('org.projectlombok:lombok:1.18.44')
+    annotationProcessor('org.projectlombok:lombok:1.18.44')
+}
+
+processResources {
+    inputs.properties([
+        name       : rootProject.ext.pluginName,
+        version    : project.version,
+        description: rootProject.description,
+        url        : rootProject.ext.pluginUrl,
+        author     : rootProject.ext.pluginAuthor
+    ])
+
+    filesMatching('plugin.yml') {
+        expand(
+            name: rootProject.ext.pluginName,
+            version: project.version,
+            description: rootProject.description,
+            url: rootProject.ext.pluginUrl,
+            author: rootProject.ext.pluginAuthor
+        )
+    }
+}
+
+tasks.jar {
+    archiveBaseName.set("${rootProject.ext.pluginName}-paper")
+    archiveClassifier.set('thin')
+}
+
+tasks.shadowJar {
+    archiveBaseName.set("${rootProject.ext.pluginName}-paper")
+    archiveClassifier.set('')
+}
+
+tasks.build {
+    dependsOn tasks.shadowJar
+}

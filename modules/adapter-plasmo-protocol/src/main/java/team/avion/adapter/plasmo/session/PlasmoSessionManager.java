@@ -5,6 +5,7 @@ import team.avion.adapter.plasmo.udp.PlasmoUdpEnvelope;
 import team.avion.adapter.plasmo.udp.packet.PlayerAudioPacket;
 
 import java.net.SocketAddress;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -39,6 +40,10 @@ public final class PlasmoSessionManager {
 
     public Optional<PlasmoClientSession> bySecret(UUID secret) {
         return Optional.ofNullable(sessionsBySecret.get(secret));
+    }
+
+    public Collection<PlasmoClientSession> sessions() {
+        return sessionsBySecret.values();
     }
 
     public void remove(UUID playerId) {

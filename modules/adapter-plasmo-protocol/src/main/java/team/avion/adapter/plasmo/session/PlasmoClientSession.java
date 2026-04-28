@@ -10,6 +10,8 @@ public final class PlasmoClientSession {
     private final UUID udpSecret;
     private SocketAddress remoteAddress;
     private long lastSeenMillis;
+    private long lastKeepAliveSentMillis;
+    private boolean configSent;
 
     public PlasmoClientSession(UUID playerId, String playerName, int voiceCraftEntityId, UUID udpSecret) {
         this.playerId = playerId;
@@ -41,6 +43,22 @@ public final class PlasmoClientSession {
 
     public long lastSeenMillis() {
         return lastSeenMillis;
+    }
+
+    public long lastKeepAliveSentMillis() {
+        return lastKeepAliveSentMillis;
+    }
+
+    public boolean configSent() {
+        return configSent;
+    }
+
+    public void markConfigSent() {
+        configSent = true;
+    }
+
+    public void markKeepAliveSent() {
+        lastKeepAliveSentMillis = System.currentTimeMillis();
     }
 
     public void touch(SocketAddress remoteAddress) {

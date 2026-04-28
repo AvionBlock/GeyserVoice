@@ -18,6 +18,9 @@ import team.avion.adapter.plasmo.tcp.PlasmoTcpCodec;
 import team.avion.adapter.plasmo.tcp.PlasmoTcpCodecs;
 import team.avion.adapter.plasmo.tcp.packet.ConfigPacket;
 import team.avion.adapter.plasmo.tcp.packet.ConnectionPacket;
+import team.avion.adapter.plasmo.tcp.packet.LanguagePacket;
+import team.avion.adapter.plasmo.tcp.packet.LanguageRequestPacket;
+import team.avion.adapter.plasmo.tcp.packet.PlayerActivationDistancesPacket;
 import team.avion.adapter.plasmo.tcp.packet.PlayerInfoPacket;
 import team.avion.adapter.plasmo.tcp.packet.PlayerInfoRequestPacket;
 import team.avion.adapter.plasmo.tcp.packet.PlayerListPacket;
@@ -36,8 +39,12 @@ import java.net.SocketTimeoutException;
 import java.util.OptionalInt;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.Map;
 
 public final class PaperPlasmoVoiceAdapter implements VoiceAdapter, PluginMessageListener, Listener {
+    private static final long KEEP_ALIVE_INTERVAL_MS = 1000L;
+    private static final long KEEP_ALIVE_TIMEOUT_MS = 30000L;
+
     private final GeyserVoice plugin;
     private final PlasmoTcpCodec tcpCodec = PlasmoTcpCodecs.createBaseCodec();
     private final PlasmoUdpCodec udpCodec = PlasmoUdpCodecs.createBaseCodec();
@@ -52,6 +59,7 @@ public final class PaperPlasmoVoiceAdapter implements VoiceAdapter, PluginMessag
     private String advertisedHost;
     private int udpPort;
     private int proximityDistance;
+    private boolean debug;
 
     public PaperPlasmoVoiceAdapter(GeyserVoice plugin) {
         this.plugin = plugin;
@@ -84,6 +92,7 @@ public final class PaperPlasmoVoiceAdapter implements VoiceAdapter, PluginMessag
         this.advertisedHost = plugin.getConfig().getString("config.adapters.plasmo.advertised-host", "0.0.0.0");
         this.udpPort = plugin.getConfig().getInt("config.adapters.plasmo.port", 24454);
         this.proximityDistance = plugin.getConfig().getInt("config.voice.proximity-distance", 30);
+        this.debug = plugin.getConfig().getBoolean("config.debug", false);
 
         udpSocket = new DatagramSocket(new InetSocketAddress(bindHost, udpPort));
         udpSocket.setSoTimeout(1000);
@@ -97,7 +106,8 @@ public final class PaperPlasmoVoiceAdapter implements VoiceAdapter, PluginMessag
         plugin.getServer().getMessenger().registerIncomingPluginChannel(plugin, PlasmoChannels.MAIN, this);
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
         state = AdapterState.RUNNING;
-        plugin.Logger.info("Plasmo Voice adapter listening on " + bindHost + ":" + udpPort + ".");
+        plugin.Logger.info("Plasmo Voice adapter listening on " + bindHost + ":" + udpPort
+                + " and advertising " + advertisedHost + ":" + udpPort + ".");
     }
 
     @Override
@@ -136,6 +146,10 @@ public final class PaperPlasmoVoiceAdapter implements VoiceAdapter, PluginMessag
             PlasmoPacket packet = tcpCodec.decode(message);
             if (packet instanceof PlayerInfoPacket infoPacket) {
                 handlePlayerInfo(player, infoPacket);
+            } else if (packet instanceof LanguageRequestPacket languageRequest) {
+                sendTcpPacket(player, new LanguagePacket(languageRequest.language(), Map.of()));
+            } else if (packet instanceof PlayerActivationDistancesPacket) {
+                // Client-side distance preferences are accepted but currently mapped to VoiceCraft proximity settings.
             }
         } catch (Exception exception) {
             plugin.Logger.warn("Failed to decode Plasmo packet from " + player.getName() + ": " + exception.getMessage());
@@ -144,7 +158,7 @@ public final class PaperPlasmoVoiceAdapter implements VoiceAdapter, PluginMessag
 
     @EventHandler
     public void onPlayerRegisterChannel(PlayerRegisterChannelEvent event) {
-        if (!PlasmoChannels.MAIN.equals(event.getChannel()) && !PlasmoChannels.FLAG.equals(event.getChannel())) {
+        if (!PlasmoChannels.MAIN.equals(event.getChannel())) {
             return;
         }
 
@@ -182,6 +196,8 @@ public final class PaperPlasmoVoiceAdapter implements VoiceAdapter, PluginMessag
         }
 
         PlasmoClientSession session = sessions.createOrReplace(player.getUniqueId(), player.getName(), entityId.getAsInt());
+        debug("Created Plasmo session for " + player.getName() + " entity=" + entityId.getAsInt()
+                + " secret=" + session.udpSecret() + " endpoint=" + advertisedHost + ":" + udpPort + ".");
         sendTcpPacket(player, new ConnectionPacket(session.udpSecret(), advertisedHost, udpPort));
     }
 
@@ -193,8 +209,11 @@ public final class PaperPlasmoVoiceAdapter implements VoiceAdapter, PluginMessag
                 udpSocket.receive(datagram);
                 byte[] payload = new byte[datagram.getLength()];
                 System.arraycopy(datagram.getData(), datagram.getOffset(), payload, 0, datagram.getLength());
+                debug("Received Plasmo UDP datagram from " + datagram.getSocketAddress() + " bytes=" + payload.length + ".");
                 handleUdpDatagram(payload, datagram.getSocketAddress());
+                sendKeepAlivePackets();
             } catch (SocketTimeoutException ignored) {
+                sendKeepAlivePackets();
             } catch (SocketException exception) {
                 if (running.get()) {
                     plugin.Logger.warn("Plasmo UDP socket failed: " + exception.getMessage());
@@ -207,22 +226,56 @@ public final class PaperPlasmoVoiceAdapter implements VoiceAdapter, PluginMessag
 
     private void handleUdpDatagram(byte[] payload, java.net.SocketAddress remoteAddress) throws IOException {
         PlasmoUdpEnvelope envelope = udpCodec.decode(payload);
+        debug("Decoded Plasmo UDP packet type=" + envelope.type() + " secret=" + envelope.secret()
+                + " from=" + remoteAddress + ".");
         if (!sessions.handleUdpPacket(envelope, remoteAddress)) {
+            debug("Ignored Plasmo UDP packet with unknown secret " + envelope.secret() + ".");
             return;
         }
 
         if (envelope.packet() instanceof PingPacket) {
-            sendUdpPacket(new PingPacket(), envelope.secret(), remoteAddress);
             sessions.bySecret(envelope.secret()).ifPresent(session ->
                     plugin.getServer().getScheduler().runTask(plugin, () -> {
+                        if (session.configSent()) {
+                            return;
+                        }
                         Player player = plugin.getServer().getPlayer(session.playerId());
                         if (player == null || !player.isOnline()) {
                             return;
                         }
                         sendTcpPacket(player, new ConfigPacket(serverId, proximityDistance));
                         sendTcpPacket(player, new PlayerListPacket());
+                        session.markConfigSent();
+                        debug("Sent Plasmo config/player list to " + player.getName() + ".");
                     })
             );
+        }
+    }
+
+    private void sendKeepAlivePackets() {
+        long now = System.currentTimeMillis();
+        for (PlasmoClientSession session : sessions.sessions()) {
+            java.net.SocketAddress remoteAddress = session.remoteAddress();
+            if (remoteAddress == null) {
+                continue;
+            }
+            if (now - session.lastSeenMillis() > KEEP_ALIVE_TIMEOUT_MS) {
+                debug("Plasmo UDP session timed out for " + session.playerName() + ".");
+                sessions.remove(session.playerId());
+                continue;
+            }
+            if (now - session.lastKeepAliveSentMillis() < KEEP_ALIVE_INTERVAL_MS) {
+                continue;
+            }
+
+            try {
+                sendUdpPacket(new PingPacket(), session.udpSecret(), remoteAddress);
+                session.markKeepAliveSent();
+                debug("Sent Plasmo UDP keepalive secret=" + session.udpSecret() + " to=" + remoteAddress + ".");
+            } catch (IOException exception) {
+                plugin.Logger.warn("Failed to send Plasmo UDP keepalive to " + session.playerName() + ": "
+                        + exception.getMessage());
+            }
         }
     }
 
@@ -236,8 +289,15 @@ public final class PaperPlasmoVoiceAdapter implements VoiceAdapter, PluginMessag
     private void sendTcpPacket(Player player, PlasmoPacket packet) {
         try {
             player.sendPluginMessage(plugin, PlasmoChannels.MAIN, tcpCodec.encode(packet));
+            debug("Sent Plasmo TCP packet " + packet.getClass().getSimpleName() + " to " + player.getName() + ".");
         } catch (Exception exception) {
             plugin.Logger.warn("Failed to send Plasmo packet to " + player.getName() + ": " + exception.getMessage());
+        }
+    }
+
+    private void debug(String message) {
+        if (debug) {
+            plugin.Logger.info("[PlasmoAdapter] " + message);
         }
     }
 }

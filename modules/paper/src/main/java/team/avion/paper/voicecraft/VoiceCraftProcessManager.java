@@ -46,12 +46,6 @@ public class VoiceCraftProcessManager {
         if (plugin.usesProxy) {
             return;
         }
-        if (isEndpointReachable()) {
-            return;
-        }
-        if (process != null && process.isAlive()) {
-            return;
-        }
 
         LaunchTarget launchTarget = null;
         try {
@@ -61,20 +55,27 @@ public class VoiceCraftProcessManager {
                 return;
             }
 
-            List<String> command = new ArrayList<>();
-            command.add(launchTarget.command());
-            command.addAll(launchTarget.arguments());
-            appendRuntimeArguments(command);
+            ManagedConfigSyncResult initialSync = syncManagedServerProperties(launchTarget.installDirectory());
 
-            ProcessBuilder builder = new ProcessBuilder(command);
-            builder.directory(launchTarget.workingDirectory().toFile());
-            configureRuntimeEnvironment(builder);
+            if (process != null && process.isAlive()) {
+                if (initialSync.changed()) {
+                    restartManagedProcess(launchTarget, "Managed VoiceCraft config changed, restarting process...");
+                }
+                return;
+            }
+            if (isEndpointReachable()) {
+                return;
+            }
 
-            plugin.Logger.info("Starting managed VoiceCraft process: " + launchTarget.command());
-            process = builder.start();
-            startLogPump(process.getInputStream(), false);
-            startLogPump(process.getErrorStream(), true);
-            waitUntilReachable();
+            startManagedProcess(launchTarget);
+
+            if (initialSync.missing()) {
+                ManagedConfigSyncResult postStartSync = syncManagedServerProperties(launchTarget.installDirectory());
+                if (postStartSync.changed()) {
+                    restartManagedProcess(launchTarget,
+                            "Managed VoiceCraft config was generated and updated, restarting process...");
+                }
+            }
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
             plugin.Logger.error("VoiceCraft startup was interrupted: " + ex.getMessage());
@@ -93,18 +94,50 @@ public class VoiceCraftProcessManager {
 
         if (plugin.getConfig().getBoolean("config.voicecraft.shutdown-on-disable", true)) {
             plugin.Logger.info("Stopping managed VoiceCraft process...");
-            process.destroy();
-            try {
-                if (!process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)) {
-                    process.destroyForcibly();
-                }
-            } catch (InterruptedException ex) {
-                Thread.currentThread().interrupt();
-                process.destroyForcibly();
-            }
+            stopProcess();
         }
 
         process = null;
+    }
+
+    private void startManagedProcess(LaunchTarget launchTarget) throws IOException {
+        List<String> command = new ArrayList<>();
+        command.add(launchTarget.command());
+        command.addAll(launchTarget.arguments());
+        appendRuntimeArguments(command);
+
+        ProcessBuilder builder = new ProcessBuilder(command);
+        builder.directory(launchTarget.workingDirectory().toFile());
+        configureRuntimeEnvironment(builder);
+
+        plugin.Logger.info("Starting managed VoiceCraft process: " + launchTarget.command());
+        process = builder.start();
+        startLogPump(process.getInputStream(), false);
+        startLogPump(process.getErrorStream(), true);
+        waitUntilReachable();
+    }
+
+    private void restartManagedProcess(LaunchTarget launchTarget, String reason) throws IOException {
+        plugin.Logger.info(reason);
+        stopProcess();
+        process = null;
+        startManagedProcess(launchTarget);
+    }
+
+    private void stopProcess() {
+        if (process == null) {
+            return;
+        }
+
+        process.destroy();
+        try {
+            if (!process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+            }
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            process.destroyForcibly();
+        }
     }
 
     private Thread startLogPump(InputStream stream, boolean errorStream) {
@@ -200,8 +233,6 @@ public class VoiceCraftProcessManager {
             writeReleaseMarker(releaseMarker, releaseId);
         }
 
-        updateManagedServerProperties(installDirectory);
-
         if (!Files.exists(executablePath)) {
             plugin.Logger.error("Managed VoiceCraft executable was not found after extraction: " + executablePath);
             return null;
@@ -209,7 +240,8 @@ public class VoiceCraftProcessManager {
 
         executablePath.toFile().setExecutable(true);
         Path absoluteExecutablePath = executablePath.toAbsolutePath().normalize();
-        return new LaunchTarget(absoluteExecutablePath.getParent(), absoluteExecutablePath.toString(), List.of());
+        return new LaunchTarget(installDirectory, absoluteExecutablePath.getParent(), absoluteExecutablePath.toString(),
+                List.of());
     }
 
     private Path resolveInstallDirectory() {
@@ -237,20 +269,25 @@ public class VoiceCraftProcessManager {
         return installDirectory.resolve(fileName).normalize();
     }
 
-    private void updateManagedServerProperties(Path installDirectory) throws IOException {
+    private ManagedConfigSyncResult syncManagedServerProperties(Path installDirectory) throws IOException {
         Path serverPropertiesPath = installDirectory.resolve("config").resolve("ServerProperties.json").normalize();
         if (!Files.exists(serverPropertiesPath)) {
-            plugin.Logger.warn("Managed VoiceCraft config file was not found: " + serverPropertiesPath);
-            return;
+            plugin.Logger.info("Managed VoiceCraft config file is not present yet: " + serverPropertiesPath);
+            return new ManagedConfigSyncResult(serverPropertiesPath, false, true);
         }
 
         String content = Files.readString(serverPropertiesPath, StandardCharsets.UTF_8);
-        String updated = content.replaceFirst("\"Port\"\\s*:\\s*\\d+",
-                "\"Port\": " + plugin.getManagedVoicePort());
+        String updated = content.replaceFirst("\"Port\"\\s*:\\s*\\d+", "\"Port\": " + plugin.getManagedVoicePort());
         if (!updated.equals(content)) {
             Files.writeString(serverPropertiesPath, updated, StandardCharsets.UTF_8,
                     StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+            return new ManagedConfigSyncResult(serverPropertiesPath, true, false);
         }
+        return new ManagedConfigSyncResult(serverPropertiesPath, false, false);
+    }
+
+    Path getManagedServerPropertiesPath() {
+        return resolveInstallDirectory().resolve("config").resolve("ServerProperties.json").normalize();
     }
 
     private void downloadAndExtractRelease(Path installDirectory, String assetName) throws IOException, InterruptedException {
@@ -361,6 +398,9 @@ public class VoiceCraftProcessManager {
         return Character.toUpperCase(value.charAt(0)) + value.substring(1).toLowerCase(Locale.ROOT);
     }
 
-    private record LaunchTarget(Path workingDirectory, String command, List<String> arguments) {
+    private record LaunchTarget(Path installDirectory, Path workingDirectory, String command, List<String> arguments) {
+    }
+
+    private record ManagedConfigSyncResult(Path path, boolean changed, boolean missing) {
     }
 }
